@@ -8,6 +8,8 @@ import { CustomError } from './interfaces';
 import cookieParser from 'cookie-parser'; // Import cookie-parser
 import authRoutes from "./routes/auth"
 import roleRoutes from "./routes/role"
+import categoryRoutes from "./routes/category"
+import contactRoutes from "./routes/contact"
 // Load environment variables from .env file
 dotenv.config();
 
@@ -24,7 +26,7 @@ app.use(bodyParser.urlencoded({ limit: '512mb', extended: true })); // For handl
 app.use(cookieParser());
 
 connectToDB()
-checkElasticsearchConnection()
+// checkElasticsearchConnection()
 // checkPythonConnection()
 
 
@@ -35,7 +37,8 @@ app.get('/', (req: Request, res: Response, next: NextFunction) => {
 
 app.use('/auth', authRoutes)
 app.use('/roles', roleRoutes)
-
+app.use('/category', categoryRoutes)
+app.use('/contact', contactRoutes)
 
 // error handler
 app.use((err: CustomError, req: Request, res: Response, next: NextFunction): any => {
