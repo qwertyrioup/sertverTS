@@ -1,7 +1,7 @@
 import express, {Router} from "express";
-import { verifyPermissions, verifyToken } from "../controllers/jwt";
-import { Multer } from "../helpers";
-import { createBlog, deleteBlog, getAllBlogs, getBlog, getBlogById, updateBlog } from "../controllers/blog";
+import { verifyPermissions, verifyToken } from "../../controllers/affigen/jwt";
+import { Multer } from "../../helpers";
+import { createBlog, deleteBlog, getAllBlogs, getBlog, getBlogById, updateBlog } from "../../controllers/affigen/blog";
 
 
 

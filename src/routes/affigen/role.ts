@@ -1,8 +1,8 @@
 // auth.js (route file)
 import express, {Router} from "express";
-import { signin } from "../controllers/auth";
-import { getAllRoles } from "../controllers/role";
-import { verifyPermissions, verifyToken } from "../controllers/jwt";
+import { signin } from "../../controllers/auth";
+import { getAllRoles } from "../../controllers/affigen/role";
+import { verifyPermissions, verifyToken } from "../../controllers/affigen/jwt";
 
 
 

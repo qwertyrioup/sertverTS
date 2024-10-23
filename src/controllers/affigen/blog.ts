@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import { parseJSON, uploadFile } from "../helpers";
-import Blog, { IBlog } from "../models/Blog";
-import { createError } from "../error";
+import { parseJSON, uploadFile } from "../../helpers";
+import Blog, { IBlog } from "../../models/affigen/Blog";
+import { createError } from "../../error";
 
 
 // Helper to validate required fields

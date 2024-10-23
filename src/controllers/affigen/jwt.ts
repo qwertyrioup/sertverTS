@@ -1,8 +1,8 @@
 import * as jwt from 'jsonwebtoken'
 import { Request, Response, NextFunction } from 'express';
-import { createError } from '../error';
+import { createError } from '../../error';
 import * as dotenv from "dotenv"
-import User, { IUser } from '../models/User';
+import User, { IUser } from '../../models/User';
 
 dotenv.config();
 

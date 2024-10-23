@@ -1,7 +1,7 @@
 
 import { Request, Response, NextFunction } from 'express';
-import Role, { IRole } from '../models/Role';
-import { createError } from '../error';
+import Role, { IRole } from '../../models/affigen/Role';
+import { createError } from '../../error';
 
 
 export const getAllRoles = async (req: Request, res: Response, next: NextFunction) => {

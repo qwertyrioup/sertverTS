@@ -7,7 +7,7 @@ import { checkElasticsearchConnection, checkPythonConnection, connectToDB } from
 import { CustomError } from './interfaces';
 import cookieParser from 'cookie-parser'; // Import cookie-parser
 import authRoutes from "./routes/auth"
-import roleRoutes from "./routes/role"
+import roleRoutes from "./routes/affigen/role"
 // Load environment variables from .env file
 dotenv.config();
 
