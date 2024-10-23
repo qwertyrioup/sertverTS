@@ -3,13 +3,18 @@ import cors from "cors";
 import express, { Request, Response, NextFunction } from 'express';
 import bodyParser from 'body-parser'; // Import body-parser
 import { corsOptions } from './consts';
-import { checkElasticsearchConnection, checkPythonConnection, connectToDB } from './helpers';
+import {  checkPythonConnection, connectToDB } from './helpers';
 import { CustomError } from './interfaces';
 import cookieParser from 'cookie-parser'; // Import cookie-parser
 import authRoutes from "./routes/auth"
 import roleRoutes from "./routes/role"
 import categoryRoutes from "./routes/category"
 import contactRoutes from "./routes/contact"
+import mailContactRoutes from "./routes/mailContact"
+import popularRoutes from "./routes/popular"
+import tagRoutes from './routes/tag';
+import orderRoutes from './routes/order'
+
 // Load environment variables from .env file
 dotenv.config();
 
@@ -39,6 +44,12 @@ app.use('/auth', authRoutes)
 app.use('/roles', roleRoutes)
 app.use('/category', categoryRoutes)
 app.use('/contact', contactRoutes)
+app.use('/mailcontact', mailContactRoutes)
+app.use('/popular', popularRoutes)
+app.use('/tag', tagRoutes)
+app.use('/order', orderRoutes)
+
+
 
 // error handler
 app.use((err: CustomError, req: Request, res: Response, next: NextFunction): any => {

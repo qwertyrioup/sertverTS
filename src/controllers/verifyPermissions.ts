@@ -1,17 +1,19 @@
 import { Request, Response, NextFunction } from "express";
-import User from "../models/User.js";
-import { createError } from "../error.js";
+import User from "../models/User";
+import { createError } from "../error";
 
 const verifyPermissions = (requiredPermissions: string[]) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
+  return async (req: any, res: Response, next: NextFunction) => {
     try {
       const user = await User.findById(req.user.id).populate("role");
       if (!user) {
         return next(createError(404, "User not found"));
       }
+      // @ts-ignore
       if (!user.role || !user.role.permissions) {
         return next(createError(403, "Role or permissions not defined"));
       }
+      // @ts-ignore
       const userPermissions: string[] = user.role.permissions;
       const hasPermission = requiredPermissions.every((permission) =>
         userPermissions.includes(permission)

@@ -1,20 +1,18 @@
-import express from "express";
-import { create, getContact, getall } from "../controllers/contact";
+import express, { Router } from "express";
 import { verifyToken } from "../controllers/jwt";
+import { create, getall } from "../controllers/mailContact";
 import verifyPermissions from "../controllers/verifyPermissions";
 
-// Creating an Express router
-const router = express.Router();
+const router: Router = express.Router();
 
 const permissions = {
-  read: ['read:contact'],
+    read: ['read:mails'],
 };
 
 ////////////////////////////////////////////////////////////
 ///////////////////////    DASH        //////////////////
 //////////////////////////////////////////////////////////
 router.get("/get", verifyToken, verifyPermissions(permissions.read), getall);
-router.get("/get/:id", verifyToken, verifyPermissions(permissions.read), getContact);
 
 ////////////////////////////////////////////////////////////
 ///////////////////////    FRONTS        //////////////////
