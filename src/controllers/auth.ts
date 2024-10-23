@@ -35,7 +35,6 @@ export const signin = async (req: Request, res: Response, next: NextFunction) =>
         const { password, ...others } = user._doc;
         res.status(200).json({ ...others });
       } catch (err) {
-        console.error("Error during sign in:", err);
         next(err);
       }
   };

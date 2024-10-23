@@ -1,6 +1,13 @@
 import { Client } from "@elastic/elasticsearch";
+import { Storage } from "@google-cloud/storage";
 import mongoose from "mongoose";
+import {NextFunction} from "express"
 import * as dotenv from 'dotenv';
+import multer from "multer";
+import { format } from "util";
+import { createError } from "./error";
+
+
 dotenv.config();
 
 
@@ -12,14 +19,64 @@ export const connectToDB = async() => {
   };
 
 
-  const elasticsearchHost = process.env.ELASTICSEARCH_HOST;
+  export const storage = new Storage({
+    projectId: "affigen-ui",
+    keyFilename: String(process.env.KeyFilename),
+  })
 
-  if (!elasticsearchHost) {
-    throw new Error('ELASTICSEARCH_HOST is not defined in the .env file');
-  }
+  export const bucket = storage.bucket("images-upload-affigen-admin");
+
+
+  export const Multer = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 25 * 1024 * 1024,
+    },
+  });
+
+
+
+  export const uploadFile = (f: any): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const { originalname, buffer } = f;
+      const filename = Date.now() + originalname;
+
+      const blob = bucket.file(filename);
+
+      const blobStream = blob.createWriteStream({
+        resumable: false,
+      });
+
+      blobStream.on("error", (err) => {
+        reject(err);
+      });
+
+      blobStream.on("finish", () => {
+        const publicUrl: string = format(
+          `https://storage.googleapis.com/${bucket.name}/${blob.name}`
+        );
+        resolve(publicUrl);
+      });
+
+      blobStream.end(buffer);
+    });
+  };
+
+
+export const parseJSON = (data: string, next: NextFunction): any | void => {
+    try {
+      return JSON.parse(data);
+    } catch (error) {
+      next(createError(400, "Invalid JSON data"));
+      return;
+    }
+  };
+
+
+
 
   export const searchClient = new Client({
-    node: elasticsearchHost,  // Pass the environment variable to the Client
+    node: String(process.env.ELASTICSEARCH_HOST),  // Pass the environment variable to the Client
   });
 
 

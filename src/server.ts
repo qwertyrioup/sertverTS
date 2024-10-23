@@ -19,9 +19,9 @@ const app = express();
 
 
 app.use(cors(corsOptions));
-app.use(bodyParser.json({ limit: '512mb' })); // Body parser for JSON data
-app.use(bodyParser.urlencoded({ limit: '512mb', extended: true })); // For handling URL-encoded data
-app.use(cookieParser());
+app.use(bodyParser.json({ limit: '512mb' }))
+app.use(bodyParser.urlencoded({ limit: '512mb', extended: true }))
+app.use(cookieParser())
 
 connectToDB()
 checkElasticsearchConnection()
@@ -30,7 +30,7 @@ checkElasticsearchConnection()
 
 
 app.get('/', (req: Request, res: Response, next: NextFunction) => {
-    res.json('Hello, TypeScript + Node.js + Express!');
+    res.json('Hello, TypeScript + Node + Express');
 });
 
 app.use('/auth', authRoutes)
