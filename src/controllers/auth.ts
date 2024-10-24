@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import User, { IUser } from "../models/User";
 import { createError } from "../error";
 import bcrypt from "bcryptjs";
-import { generateToken } from "./affigen/jwt";
+import { generateToken } from "./jwt";
 
 
 

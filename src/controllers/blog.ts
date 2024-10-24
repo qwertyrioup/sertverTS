@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import { parseJSON, uploadFile } from "../../helpers";
-import Blog, { IBlog } from "../../models/affigen/Blog";
-import { createError } from "../../error";
+import { parseJSON, uploadFile } from "../helpers";
+import Blog, { IBlog } from "../models/Blog";
+import { createError } from "../error";
 
 
 // Helper to validate required fields
@@ -48,7 +48,7 @@ export const deleteBlog = async (req: Request, res: Response, next: NextFunction
 // Update Blog
 export const updateBlog = async (req: Request, res: Response, next: NextFunction) => {
   const id = req.params.id;
-  const data = req.body.data ? parseJSON(req.body.data, next) : {};
+  const data = req.body ? parseJSON(req.body, next) : {};
   if (!data) return;
 
   try {
@@ -78,7 +78,7 @@ export const updateBlog = async (req: Request, res: Response, next: NextFunction
       };
 
     await Blog.findByIdAndUpdate(id, { $set: updateData }, { new: true });
-    res.status(200).json("blog successfully updated");
+    res.status(200).json('blog updated successfully');
   } catch (err) {
     next(createError(500, "error updating blog"));
   }
@@ -111,7 +111,7 @@ export const getAllBlogs = async (req: Request, res: Response, next: NextFunctio
       res.status(200).json([]);
     }
 
-    const blogs: IBlog[] = await Blog.find(filter).sort({ updatedAt: -1 });
+    const blogs: IBlog[] = await Blog.find(filter).select('-userId').sort({ updatedAt: -1 });
     res.status(200).json(blogs);
   } catch (err) {
     next(err);
@@ -120,11 +120,11 @@ export const getAllBlogs = async (req: Request, res: Response, next: NextFunctio
 
 // Get Blog by Title
 export const getBlog = async (req: Request, res: Response, next: NextFunction) => {
-  const title = req.query.title as string;
+  const title = req.params.title as string;
   if (!title) next(createError(400, "title is required"));
 
   try {
-    const blog: IBlog | null = await Blog.findOne({ title });
+    const blog: IBlog | null = await Blog.findOne({ title }).select('-userId');
     if (!blog) {
       next(createError(404, "blog not found"));
     }

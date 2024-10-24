@@ -7,7 +7,10 @@ import { checkElasticsearchConnection, checkPythonConnection, connectToDB } from
 import { CustomError } from './interfaces';
 import cookieParser from 'cookie-parser'; // Import cookie-parser
 import authRoutes from "./routes/auth"
-import roleRoutes from "./routes/affigen/role"
+import roleRoutes from "./routes/role"
+import blogRoutes from "./routes/blog"
+import affigenProductsRoutes from "./routes/affigen_product"
+import affigenFiltersRoutes from "./routes/affigen_filter"
 // Load environment variables from .env file
 dotenv.config();
 
@@ -35,6 +38,9 @@ app.get('/', (req: Request, res: Response, next: NextFunction) => {
 
 app.use('/auth', authRoutes)
 app.use('/roles', roleRoutes)
+app.use('/affigen/blogs', blogRoutes)
+app.use('/affigen/products', affigenProductsRoutes)
+app.use('/affigen/filters', affigenFiltersRoutes)
 
 
 // error handler

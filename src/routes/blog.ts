@@ -1,7 +1,7 @@
 import express, {Router} from "express";
-import { verifyPermissions, verifyToken } from "../../controllers/affigen/jwt";
-import { Multer } from "../../helpers";
-import { createBlog, deleteBlog, getAllBlogs, getBlog, getBlogById, updateBlog } from "../../controllers/affigen/blog";
+import { verifyPermissions, verifyToken } from "../controllers/jwt";
+import { Multer } from "../helpers";
+import { createBlog, deleteBlog, getAllBlogs, getBlog, getBlogById, updateBlog } from "../controllers/blog";
 
 
 
@@ -20,8 +20,8 @@ const permissions = {
 /////////////////////                //////////////////
 router.post("/create", verifyToken, verifyPermissions(permissions.create), Multer.single("file"), createBlog);
 router.delete("/delete/:id", verifyToken, verifyPermissions(permissions.delete), deleteBlog);
-router.put("/updateBlog/:id", verifyToken, verifyPermissions(permissions.update), Multer.single("file"), updateBlog);
-router.get("/getBlogById/:id", verifyToken, verifyPermissions(permissions.read), getBlogById);
+router.put("/update/:id", verifyToken, verifyPermissions(permissions.update), Multer.single("file"), updateBlog);
+router.get("/get/:id", verifyToken, verifyPermissions(permissions.read), getBlogById);
 
 
 
@@ -29,8 +29,8 @@ router.get("/getBlogById/:id", verifyToken, verifyPermissions(permissions.read),
 ////////////////////////////////////////////////////////////
 ///////////////////////    FRONTS        //////////////////
 //////////////////////////////////////////////////////////
-router.get("/getall", getAllBlogs);
-router.get("/get", getBlog);
+router.get("/", getAllBlogs);
+router.get("/:title", getBlog);
 
 
 

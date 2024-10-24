@@ -1,7 +1,7 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
 
 // Define the schema interface
-export interface IAffigen extends Document {
+export interface IAffigenProduct extends Document {
   product_name?: string;
   cluster_name?: string;
   brand_name?: string;
@@ -45,7 +45,7 @@ export interface IAffigen extends Document {
 }
 
 // Create the schema
-const AffigenSchema: Schema = new Schema(
+const AffigenProductSchema: Schema = new Schema(
   {
     product_name: { type: String },
     cluster_name: { type: String },
@@ -94,5 +94,5 @@ const AffigenSchema: Schema = new Schema(
 );
 
 // Create the model
-const Affigen: Model<IAffigen> = mongoose.model<IAffigen>('Affigen', AffigenSchema);
-export default Affigen
+const AffigenProduct: Model<IAffigenProduct> = mongoose.model<IAffigenProduct>('Affigen_Product', AffigenProductSchema);
+export default AffigenProduct
