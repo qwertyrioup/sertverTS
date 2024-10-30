@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
-export interface IBlog extends Document {
+export interface IAffigenBlog extends Document {
   userId: string;
   title: string;
   description?: string;
@@ -17,7 +17,7 @@ export interface IBlog extends Document {
   updatedAt?: Date;
 }
 
-const BlogSchema = new Schema<IBlog>(
+const AffigenBlogSchema = new Schema<IAffigenBlog>(
   {
     userId: {
       type: String,
@@ -73,5 +73,5 @@ const BlogSchema = new Schema<IBlog>(
   { timestamps: true }
 );
 
-const Blog: Model<IBlog> = mongoose.model<IBlog>('Blog', BlogSchema);
-export default Blog
+const AffigenBlog: Model<IAffigenBlog> = mongoose.model<IAffigenBlog>('Affigen_Blog', AffigenBlogSchema);
+export default AffigenBlog

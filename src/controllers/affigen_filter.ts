@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import AffigenFilter, { IAffigenFilter } from "../models/Affigen_Filter";
-import { ELASTIC_BATCH_SCROLL_QUERY_FILTERS, ELASTIC_SCROLL_QUERY_FILTERS, GENERAL_ELSTIC_FILTERS_QUERY, getFiltersWithLogic, searchClient } from "../helpers";
+import { ELASTIC_BATCH_SCROLL_QUERY_FILTERS, ELASTIC_SCROLL_QUERY_FILTERS, GENERAL_ELSTIC_FILTERS_QUERY, getFiltersWithLogic, searchClient } from "../affigen_helpers";
 import { createError } from "../error";
 import AffigenProduct from "../models/Affigen_Product";
 import { Transform } from "stream";
@@ -312,7 +312,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
   jsonStream.pipe(res);
     try {
       const filters = await getFiltersWithLogic()
-      console.log(JSON.stringify(filters[0]))
+    //   console.log(JSON.stringify(filters[0]))
 
       if (filters.length > 0) {
         jsonStream.write('Started!')
@@ -323,11 +323,13 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
           const filterParent = document.filter;
           for (const count of document.counts) {
               const {queryData, additionalData} = count.logic;
-              console.log(queryData)
-              console.log(additionalData)
-            const elasticSearchQuery = GENERAL_ELSTIC_FILTERS_QUERY("All", queryData, additionalData)
 
-            const catAffigenFields = await ELASTIC_BATCH_SCROLL_QUERY_FILTERS(elasticSearchQuery)
+              const elasticSearchQuery = GENERAL_ELSTIC_FILTERS_QUERY("All", queryData, additionalData)
+
+
+              const catAffigenFields = await ELASTIC_BATCH_SCROLL_QUERY_FILTERS(elasticSearchQuery)
+
+
 
 
 

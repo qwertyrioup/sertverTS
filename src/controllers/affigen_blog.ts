@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { parseJSON, uploadFile } from "../helpers";
-import Blog, { IBlog } from "../models/Blog";
+import { parseJSON, uploadFile } from "../affigen_helpers";
+import AffigenBlog, { IAffigenBlog } from "../models/Affigen_Blog";
 import { createError } from "../error";
 
 
@@ -13,7 +13,7 @@ const validateRequiredFields = (data: any, next: NextFunction): boolean => {
   return true;
 };
 
-// Create Blog
+// Create AffigenBlog
 export const createBlog = async (req: Request, res: Response, next: NextFunction) => {
   let data = req.body.data ? parseJSON(req.body.data, next) : {};
   if (!data || !validateRequiredFields(data, next)) return;
@@ -24,7 +24,7 @@ export const createBlog = async (req: Request, res: Response, next: NextFunction
 
   try {
     const coverUrl = await uploadFile(req.file);
-    const newBlog = new Blog({ ...data, cover: coverUrl });
+    const newBlog = new AffigenBlog({ ...data, cover: coverUrl });
     await newBlog.save();
     res.status(200).json("blog saved successfully");
   } catch (err) {
@@ -32,10 +32,10 @@ export const createBlog = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-// Delete Blog
+// Delete AffigenBlog
 export const deleteBlog = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const deletedBlog = await Blog.findByIdAndDelete(String(req.params.id));
+    const deletedBlog = await AffigenBlog.findByIdAndDelete(String(req.params.id));
     if (!deletedBlog) {
       next(createError(404, "blog not found"));
     }
@@ -45,14 +45,14 @@ export const deleteBlog = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-// Update Blog
+// Update AffigenBlog
 export const updateBlog = async (req: Request, res: Response, next: NextFunction) => {
   const id = req.params.id;
   const data = req.body ? parseJSON(req.body, next) : {};
   if (!data) return;
 
   try {
-    const existingBlog: IBlog | null = await Blog.findById(id);
+    const existingBlog: IAffigenBlog | null = await AffigenBlog.findById(id);
     if (!existingBlog) {
       next(createError(404, "blog not found"));
     }
@@ -77,17 +77,17 @@ export const updateBlog = async (req: Request, res: Response, next: NextFunction
         comments: data.comments !== undefined ? data.comments : existingBlog?.comments || false,
       };
 
-    await Blog.findByIdAndUpdate(id, { $set: updateData }, { new: true });
+    await AffigenBlog.findByIdAndUpdate(id, { $set: updateData }, { new: true });
     res.status(200).json('blog updated successfully');
   } catch (err) {
     next(createError(500, "error updating blog"));
   }
 };
 
-// Get Blog by ID
+// Get AffigenBlog by ID
 export const getBlogById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const blog: IBlog | null = await Blog.findById(req.params.id);
+    const blog: IAffigenBlog | null = await AffigenBlog.findById(req.params.id);
     if (!blog) {
       next(createError(404, "blog not found"));
     }
@@ -111,20 +111,40 @@ export const getAllBlogs = async (req: Request, res: Response, next: NextFunctio
       res.status(200).json([]);
     }
 
-    const blogs: IBlog[] = await Blog.find(filter).select('-userId').sort({ updatedAt: -1 });
+    const blogs: IAffigenBlog[] = await AffigenBlog.find(filter).select('-userId').sort({ updatedAt: -1 });
+    res.status(200).json(blogs);
+  } catch (err) {
+    next(err);
+  }
+};
+export const getAllBlogsByPlateform = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // const domain = req.headers['x-domain'];
+    // let filter = {};
+
+    // if (domain && domain !== 'dash') {
+    //   filter = { platform: { $in: [domain, 'both'] } };
+    // } else if (!domain || domain === 'dash') {
+    //   filter = {};
+    // } else {
+    //   res.status(200).json([]);
+    // }
+
+    const blogs: IAffigenBlog[] = await AffigenBlog.find({platform: req.params.plateform}).select('-userId').sort({ updatedAt: -1 });
     res.status(200).json(blogs);
   } catch (err) {
     next(err);
   }
 };
 
-// Get Blog by Title
+// Get AffigenBlog by Title
 export const getBlog = async (req: Request, res: Response, next: NextFunction) => {
   const title = req.params.title as string;
+  console.log(title)
   if (!title) next(createError(400, "title is required"));
 
   try {
-    const blog: IBlog | null = await Blog.findOne({ title }).select('-userId');
+    const blog: IAffigenBlog | null = await AffigenBlog.findOne({ title: new RegExp(title, "i") }).select('-userId');
     if (!blog) {
       next(createError(404, "blog not found"));
     }

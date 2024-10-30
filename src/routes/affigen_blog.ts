@@ -1,7 +1,7 @@
 import express, {Router} from "express";
 import { verifyPermissions, verifyToken } from "../controllers/jwt";
-import { Multer } from "../helpers";
-import { createBlog, deleteBlog, getAllBlogs, getBlog, getBlogById, updateBlog } from "../controllers/blog";
+import { Multer } from "../affigen_helpers";
+import { createBlog, deleteBlog, getAllBlogs, getAllBlogsByPlateform, getBlog, getBlogById, updateBlog } from "../controllers/affigen_blog";
 
 
 
@@ -29,8 +29,9 @@ router.get("/get/:id", verifyToken, verifyPermissions(permissions.read), getBlog
 ////////////////////////////////////////////////////////////
 ///////////////////////    FRONTS        //////////////////
 //////////////////////////////////////////////////////////
-router.get("/", getAllBlogs);
-router.get("/:title", getBlog);
+// router.get("/", getAllBlogs);
+router.get("/:plateform", getAllBlogsByPlateform);
+router.get("/title/:title", getBlog);
 
 
 

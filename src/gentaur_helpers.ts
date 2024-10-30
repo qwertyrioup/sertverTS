@@ -8,8 +8,8 @@ import { format } from "util";
 import { createError } from "./error";
 import nodemailer from "nodemailer";
 import { IUser } from "./models/User";
-import { IAffigenProduct } from "./models/Affigen_Product";
-import AffigenFilter from "./models/Affigen_Filter";
+import { IGentaurProduct } from "./models/Gentaur_Product";
+import GentaurFilter from "./models/Gentaur_Filter";
 
 
 dotenv.config();
@@ -30,15 +30,12 @@ export const storage = new Storage({
 
 export const bucket = storage.bucket("images-upload-affigen-admin");
 
-
 export const Multer = multer({
     storage: multer.memoryStorage(),
     limits: {
         fileSize: 25 * 1024 * 1024,
     },
 });
-
-
 
 export const uploadFile = (f: any): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -66,7 +63,6 @@ export const uploadFile = (f: any): Promise<string> => {
     });
 };
 
-
 export const parseJSON = (data: any, next: NextFunction): any | void => {
     try {
         return JSON.parse(JSON.stringify(data));
@@ -76,14 +72,9 @@ export const parseJSON = (data: any, next: NextFunction): any | void => {
     }
 };
 
-
-
-
 export const searchClient = new Client({
     node: String(process.env.ELASTICSEARCH_HOST),  // Pass the environment variable to the Client
 });
-
-
 
 export const checkElasticsearchConnection = async () => {
     let isConnected = false;
@@ -102,7 +93,6 @@ export const checkElasticsearchConnection = async () => {
     }
 };
 
-
 export const checkPythonConnection = async () => {
     let isConnected = false;
     while (!isConnected) {
@@ -117,8 +107,6 @@ export const checkPythonConnection = async () => {
     }
 };
 
-
-
 export const getTransporter = async () => {
     return nodemailer.createTransport({
         service: "gmail",
@@ -128,8 +116,6 @@ export const getTransporter = async () => {
         },
     });
 }
-
-
 
 export function cleanText(inputString: string) {
     let cleanedString = inputString.replace(/\([^)]*\)/g, " ");
@@ -143,8 +129,6 @@ export function cleanText(inputString: string) {
         .join(" ");
     return cleanedText.split(" ").slice(1).join(" ");
 }
-
-
 
 export const getCreateProductMailOptions = (user: IUser, ProductRows: string) => {
 
@@ -301,13 +285,11 @@ export const getBulkDownloadProductMailOptions = (user: IUser, IDS: any) => {
 
 }
 
-
-
 export function ELASTIC_QUERY_SINGLE_INSERT(
     operator: string,
     queryData: any,
     additionalData: any,
-    catAffigenValue: string
+    catGentaurValue: string
 ) {
     const mustClauses: any = [];
     const shouldClauses: any = [];
@@ -388,9 +370,9 @@ export function ELASTIC_QUERY_SINGLE_INSERT(
         });
     }
 
-    // Ensure the 'cat_affigen' field matches the provided value
-    if (catAffigenValue) {
-        mustClauses.push({ match_phrase: { cat_affigen: catAffigenValue } });
+    // Ensure the 'catalog_number' field matches the provided value
+    if (catGentaurValue) {
+        mustClauses.push({ match_phrase: { catalog_number: catGentaurValue } });
     }
 
     const query = {
@@ -415,46 +397,104 @@ export function ELASTIC_QUERY_SINGLE_INSERT(
     return query;
 }
 
-
-
-export const generateSimplesAffigen = (products: IAffigenProduct[]): any => {
+export const generateSimplesGentaur = (products: IGentaurProduct[]): any => {
     // @ts-ignore
-    return products.map(({ _doc }) => {
-        return {
-            ..._doc,
-            variations: false,
-            buy_price: _doc.buy_price !== undefined ? `${_doc.buy_price.toFixed(2)}` : "0.00",
-            sell_price: _doc.sell_price !== undefined ? `${_doc.sell_price.toFixed(2)}` : "0.00",
-        };
+    return products.map((_doc) => {
+        let finalPrice
+        const {variations, catalog_number, supplier, price, shipment, ...others} = _doc
+        const buy = Number(price.buy.amount) || null
+        const dry_ice = Boolean(shipment.dry_ice) || false
+        const shipping_cost = Number(supplier.shipping_cost) || 200
+        const shipping_cost_dry_ice = Number(supplier.shipping_cost_dry_ice) || 400
+        const discount = Number(supplier.discount) || 1
+        const flat_rate = Number(supplier.flat_rate)
+        const bank_fee = Number(supplier.bank_fee) || 0
+        const margin = Number(supplier.margin) || 1.6
+        const invoice_surcharges = Number(supplier.invoice_surcharges) || 0
+        const valid_shipping_cost = shipping_cost === 0 ? 200 : shipping_cost
+        const valid_shipping_cost_dry_ice = shipping_cost_dry_ice === 0 ? 400 : shipping_cost_dry_ice
+        const valid_discount = (discount === 0) || (discount > 1)  ? 1 : discount
+        const valid_margin = (margin === 0) || (margin < 1) ? 1.6 : margin
+        const supplierId = supplier.id
+
+        const finalCat = supplierId + (catalog_number.startsWith('-') ? catalog_number : '-' + catalog_number);
+
+        if (!buy) {
+            finalPrice = null
+        } else {
+            if (buy < 100) {
+                if (dry_ice) {
+                    finalPrice = flat_rate + bank_fee + valid_shipping_cost_dry_ice + invoice_surcharges
+                } else {
+                    finalPrice = flat_rate + bank_fee + valid_shipping_cost + invoice_surcharges
+
+                }
+            } else if (buy >= 100) {
+                if (dry_ice) {
+                    finalPrice = (buy*valid_discount*valid_margin) + valid_shipping_cost_dry_ice + bank_fee + invoice_surcharges
+                } else {
+                    finalPrice = (buy*valid_discount*valid_margin) + valid_shipping_cost + bank_fee + invoice_surcharges
+
+                }
+
+            }
+        }
+
+
+
+        if (finalPrice) {
+            finalPrice = Number(finalPrice.toFixed(2))
+        }
+
+        // const sell_price = price && price.sell && price.sell.amount ? Number(parseFloat(price.sell.amount).toFixed(2)) : 0.00
+        // const supplierId = supplier && supplier.id ? Number(supplier.id) : null
+        return {...others, catalog_number: finalCat, sell_price: finalPrice, variant: false}
+
     });
 };
-export const generateVariantsAffigen = (products: IAffigenProduct[]): any => {
+
+export const generateSimplesGentaurELASTIC = (products: IGentaurProduct[]): any => {
+    // @ts-ignore
+    return products.map((_doc) => {
+
+        const {variations, price, supplier, ...others} = _doc
+        const sell_price = price && price.sell && price.sell.amount ? Number(parseFloat(price.sell.amount).toFixed(2)) : 0.00
+        const supplierId = supplier && supplier.id ? Number(supplier.id) : null
+        return {...others, sell_price, supplierId, variant: false}
+    });
+};
+export const generateVariantsGentaur = (products: IGentaurProduct[]): any => {
     // @ts-ignore
     return products.map(({ _doc }) => {
-        const safeJsonString = _doc.variations.replace(/'/g, '"');
-        const jsonData = JSON.parse(safeJsonString);
 
-        const variationsArray = Object.keys(jsonData).map((p) => ({
-            product_name: _doc.product_name,
-            cat_affigen: _doc.cat_affigen,
-            sub_cat: p,
-            variations: true,
-            cluster_name: _doc.cluster_name,
-            size: jsonData[p].size.Size[0],
-            buy_price: jsonData[p].buy_price[0],
-            sell_price: jsonData[p].sell_price[0],
-        }));
+        let variations
+        variations = PROCESS_VARIATIONS_SINGLE_PRODUCT(_doc.variations)
+        const {sell_price, size, ...others} = _doc
 
-        const sizes = variationsArray.map((p) => p.size).join("-");
-        const prices = variationsArray.map((p) => p.sell_price).join("-");
-        const buyPrices = variationsArray.map((p) => p.buy_price).join("-");
+        return {
+            ...others,
+            variant: true,
+            variations
+        };
+
+
+
+
+
+    });
+};
+export const generateVariantsGentaurELASTIC = (products: IGentaurProduct[]): any => {
+    // @ts-ignore
+    return products.map(( _doc ) => {
+
+        let variations
+        variations = PROCESS_VARIATIONS_SINGLE_PRODUCT(_doc.variations)
+
 
         return {
             ..._doc,
-            variations: true,
-            buy_price: buyPrices,
-            sell_price: prices,
-            size: sizes,
+            variant: true,
+            variations
         };
 
 
@@ -464,14 +504,11 @@ export const generateVariantsAffigen = (products: IAffigenProduct[]): any => {
     });
 };
 
-
-
-
-export const upsertAffigenProductToELASTIC = async (index: string, product: IAffigenProduct) => {
+export const upsertGentaurProductToELASTIC = async (index: string, product: IGentaurProduct) => {
     try {
         await searchClient.update({
             index,
-            id: product.cat_affigen, // Use `cat_affigen` as the ID for upsert
+            id: product.catalog_number, // Use `catalog_number` as the ID for upsert
             body: {
                 doc: product, // Fields to update
                 doc_as_upsert: true, // Insert if not exists
@@ -484,7 +521,6 @@ export const upsertAffigenProductToELASTIC = async (index: string, product: IAff
         return false
     }
 };
-
 
 export const checkIfDocumentExistsInELASTIC = async (index: string, id: string): Promise<boolean> => {
     try {
@@ -500,12 +536,11 @@ export const checkIfDocumentExistsInELASTIC = async (index: string, id: string):
     }
 };
 
-
-export const deleteAffigenProductFromELASTIC = async (index: string, id: string) => {
+export const deleteGentaurProductFromELASTIC = async (index: string, id: string) => {
     try {
         const response = await searchClient.delete({
             index,
-            id, // Use the unique identifier (e.g., cat_affigen)
+            id, // Use the unique identifier (e.g., catalog_number)
         });
 
         //   console.log('Document deleted successfully:', response);
@@ -524,11 +559,9 @@ export const deleteAffigenProductFromELASTIC = async (index: string, id: string)
     }
 };
 
-
-
 export const getFiltersWithLogic = async () => {
     try {
-        const filters = await AffigenFilter.aggregate([
+        const filters = await GentaurFilter.aggregate([
             {
                 $match: {
                     "counts.logic": { $exists: true, $ne: {} }  // Ensure documents have counts with non-empty logic
@@ -557,8 +590,6 @@ export const getFiltersWithLogic = async () => {
         return []
     }
 }
-
-
 
 export function GENERAL_ELSTIC_FILTERS_QUERY(operator: string, queryData: any, additionalData: any) {
     const mustClauses: any = [];
@@ -662,23 +693,21 @@ export function GENERAL_ELSTIC_FILTERS_QUERY(operator: string, queryData: any, a
     return query;
 }
 
-
-
 export const ELASTIC_SCROLL_QUERY_FILTERS = async (elasticSearchQuery: any) => {
 
 
     const result = await searchClient.search({
-        index: "affigen_products",
+        index: "gentaur_products",
         body: elasticSearchQuery,
         scroll: "5m",
     });
 
-    let catAffigenFields = [];
+    let catGentaurFields = [];
 
     let allDocuments = result.hits.hits.slice();
-    catAffigenFields.push(
+    catGentaurFields.push(
         // @ts-ignore
-        ...allDocuments.map((doc) => doc._source.cat_affigen)
+        ...allDocuments.map((doc) => doc._source.catalog_number)
     );
 
     let scrollId = result._scroll_id;
@@ -695,51 +724,47 @@ export const ELASTIC_SCROLL_QUERY_FILTERS = async (elasticSearchQuery: any) => {
         }
 
         allDocuments = allDocuments.concat(scrollResults.hits.hits);
-        catAffigenFields.push(
+        catGentaurFields.push(
             // @ts-ignore
-            ...scrollResults.hits.hits.map((doc) => doc._source.cat_affigen)
+            ...scrollResults.hits.hits.map((doc) => doc._source.catalog_number)
         );
 
         scrollId = scrollResults._scroll_id;
     }
 
-    return catAffigenFields
+    return catGentaurFields
 
 
 
 }
+
 export const ELASTIC_BATCH_SCROLL_QUERY_FILTERS = async (elasticSearchQuery: any) => {
 
-    let catAffigenFields: any = [];
+    let catGentaurFields: any = [];
 
     let searchResponse = await searchClient.search({
-        index: "odoos",
+        index: "gentaur_products",
         body: elasticSearchQuery,
         scroll: "5m"
       });
     //   @ts-ignore
-      catAffigenFields = searchResponse.hits.hits.map(doc => doc._source.cat_affigen);
+      catGentaurFields = searchResponse.hits.hits.map(doc => doc._source.catalog_number);
       let scrollId = searchResponse._scroll_id;
 
       try {
         while (searchResponse.hits.hits.length) {
           searchResponse = await searchClient.scroll({ scroll_id: scrollId, scroll: "5m" });
         //   @ts-ignore
-          catAffigenFields.push(...searchResponse.hits.hits.map(doc => doc._source.cat_affigen));
+          catGentaurFields.push(...searchResponse.hits.hits.map(doc => doc._source.catalog_number));
         }
       } finally {
         await searchClient.clearScroll({ scroll_id: scrollId });
       }
-    return catAffigenFields
+    return catGentaurFields
 
 
 
 }
-
-
-
-
-
 
 export const PROCESS_VARIATIONS_SINGLE_PRODUCT = (variations: any): any => {
     const result = [];
@@ -750,7 +775,7 @@ export const PROCESS_VARIATIONS_SINGLE_PRODUCT = (variations: any): any => {
 
   // Parse the cleaned JSON string
   const json = JSON.parse(cleanedVariations.replace(/'/g, '"'));
-  for (const [catAffigen, variant] of Object.entries(json)) {
+  for (const [catGentaur, variant] of Object.entries(json)) {
     // @ts-ignore
     const cleanedBuyPrice = variant.buy_price.map((price: any) =>
         isNaN(price) ? 0.00 : parseFloat(price).toFixed(2)
@@ -764,10 +789,282 @@ const cleanedSellPrice = variant.sell_price.map((price: any) =>
 
     // Create the standardized object
     result.push({
-      cat_affigen: catAffigen,
+      catalog_number: catGentaur,
       size: cleanedSize,
       sell_price: parseFloat(cleanedSellPrice[0]),
     });
   }
   return result
+}
+
+
+
+export function ELASTIC_WITH_CUSTOM_FILTERS_PAGINATION_QUERY(operator: string, queryData: any, additionalData: any, pageNumber: number, limit: number) {
+    const mustClauses: any = [];
+    const shouldClauses: any = [];
+    const mustNotClauses: any = [];
+    const filterClauses: any = [];
+
+    const processValue = (value: any, field = 'product_name') => {
+      if (value.includes('&')) {
+        const values = value.split('&').map((v: any) => v.trim());
+        return {
+          bool: {
+            must: values.map((val: any) => ({ match_phrase: { [field]: val } }))
+          }
+        };
+      } else if (value.includes('/')) {
+        const values = value.split('/').map((v: any) => v.trim());
+        return {
+          bool: {
+            should: values.map((val: any) => ({ match_phrase: { [field]: val } })),
+            minimum_should_match: 1
+          }
+        };
+      } else {
+        return { match_phrase: { [field]: value } };
+      }
+    };
+
+    // Process queryData
+    queryData.forEach((item: any) => {
+      if (item.option === 'inc') {
+        const clause = processValue(item.value);
+        if (operator === 'All') {
+          mustClauses.push(clause);
+        } else {
+          shouldClauses.push(clause);
+        }
+      } else if (item.option === 'exc') {
+        mustNotClauses.push(processValue(item.value));
+      }
+    });
+
+    // Process additionalData for conditional logic
+    if (additionalData && additionalData.length > 0) {
+      additionalData.forEach((condition: any) => {
+        const ifClause = processValue(condition.ifValue);
+        const thenClause = processValue(condition.thenValue);
+
+        let ifCondition;
+        if (condition.ifOption === 'inc') {
+          ifCondition = ifClause;
+        } else if (condition.ifOption === 'exc') {
+          ifCondition = { bool: { must_not: [ifClause] } };
+        }
+
+        let thenCondition;
+        if (condition.thenOption === 'inc') {
+          thenCondition = thenClause;
+        } else if (condition.thenOption === 'exc') {
+          thenCondition = { bool: { must_not: [thenClause] } };
+        }
+
+        // "If A then B" is equivalent to "NOT A OR B"
+        const conditionalClause = {
+          bool: {
+            should: [
+              {
+                bool: {
+                  must_not: [ifCondition]
+                }
+              },
+              thenCondition
+            ],
+            minimum_should_match: 1
+          }
+        };
+
+        filterClauses.push(conditionalClause);
+      });
+    }
+
+    const query = {
+      query: {
+        bool: {
+          must: mustClauses,
+          should: operator === 'Any' ? shouldClauses : [],
+          must_not: mustNotClauses,
+          // Only include the filter if filterClauses is not empty
+          ...(filterClauses.length > 0 && { filter: filterClauses }),
+        }
+      },
+      size: limit,
+      from: (pageNumber - 1) * limit
+    };
+
+    // If using 'should' clauses without 'must', ensure at least one 'should' clause matches
+    if (operator === 'Any' && shouldClauses.length > 0) {
+        // @ts-ignore
+      query.query.bool.minimum_should_match = 1;
+    }
+
+    return query;
+  }
+
+
+
+export const ELASTIC_WITH_FILTERS_PAGINATION_RESPONSE = async (elasticSearchQuery :any) => {
+    const from = elasticSearchQuery.from
+    const page = (from/100) + 1
+    let total
+    let pages
+    let filters:any = []
+
+    let products:any = []
+
+    try {
+
+        const result = await searchClient.search({
+            index: "gentaur_products",
+            body: elasticSearchQuery,
+          });
+
+// @ts-ignore
+          total = result.hits.total.value
+          const totalPages = Math.ceil(total / 100);
+          pages  = totalPages
+
+
+
+          const fieldsToReturn = [
+            'name',
+            'catalog_number',
+            'price',
+            'supplier',
+            'size',
+            'variations',
+            'cluster_name',
+            'url',
+          ];
+
+          const products = result.hits.hits.map((item: any) => {
+            const source = item._source;
+            const product: any = {};
+
+            for (const field of fieldsToReturn) {
+              if (source[field] !== undefined && source[field] !== null) {
+                product[field] = source[field];
+              }
+            }
+
+            return product;
+          });
+
+
+
+          if (result.aggregations && result.aggregations.filters_count) {
+            const filterNamesBuckets =
+            // @ts-ignore
+              result.aggregations.filters_count.filterNames.buckets;
+            filterNamesBuckets.forEach((bucket: any) => {
+              const filterName = bucket.key;
+
+              const sortedValuesArray = bucket.filterValues.buckets
+                .sort((a: any, b: any) => a.key.localeCompare(b.key))
+                .map((valueBucket: any) => ({
+                  key: valueBucket.key,
+                  doc_count: valueBucket.doc_count,
+                }));
+              filters.push({
+                key: filterName,
+                filter_values: sortedValuesArray,
+              });
+
+            });
+          }
+
+
+          if (filters.length > 0) {
+
+
+
+            filters.sort((a: any, b: any) => a.key.localeCompare(b.key));
+
+          }
+
+
+
+          return {
+            count: total,
+            pages: pages,
+            page: page,
+            filters: filters,
+            products: products,
+          };
+
+    } catch (error) {
+        return {
+            count: 10000,
+            pages: 100,
+            page: 1,
+            products: products,
+            filters: filters
+          };
+    }
+
+
+}
+export const ELASTIC_WITH_CUSTOM_FILTERS_PAGINATION_RESPONSE = async (elasticSearchQuery :any) => {
+    const from = elasticSearchQuery.from
+    const page = (from/100) + 1
+    let total
+    let pages
+
+    let products:any = []
+
+    try {
+
+        const result = await searchClient.search({
+            index: "gentaur_products",
+            body: elasticSearchQuery,
+          });
+
+// @ts-ignore
+          total = result.hits.total.value
+          const totalPages = Math.ceil(total / 100);
+          pages  = totalPages
+
+
+
+          const fieldsToReturn = [
+            'product_name',
+            'catalog_number',
+            'sell_price',
+            'size',
+            'variations',
+            'cluster_name',
+            'url',
+          ];
+
+          const products = result.hits.hits.map((item: any) => {
+            const source = item._source;
+            const product: any = {};
+
+            for (const field of fieldsToReturn) {
+              if (source[field] !== undefined && source[field] !== null) {
+                product[field] = source[field];
+              }
+            }
+
+            return product;
+          });
+
+          return {
+            count: total,
+            pages: pages,
+            page: page,
+            products: products,
+          };
+
+    } catch (error) {
+        return {
+            count: total,
+            pages: pages,
+            page: page,
+            products: products,
+          };
+    }
+
+
 }

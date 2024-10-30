@@ -1,18 +1,20 @@
 import { NextFunction, Request, Response } from "express";
 import * as stringSimilarity from "string-similarity";
 import { createError } from "../error";
-import { checkIfDocumentExistsInELASTIC, cleanText, deleteAffigenProductFromELASTIC, ELASTIC_QUERY_SINGLE_INSERT, ELASTIC_SCROLL_QUERY_FILTERS, GENERAL_ELSTIC_FILTERS_QUERY, generateSimplesAffigen, generateVariantsAffigen, getBulkDownloadProductMailOptions, getCreateProductMailOptions, getDeleteProductMailOptions, getEditProductMailOptions, getFiltersWithLogic, getTransporter, PROCESS_VARIATIONS_SINGLE_PRODUCT, searchClient, uploadFile, upsertAffigenProductToELASTIC } from "../affigen_helpers";
+import { checkIfDocumentExistsInELASTIC, cleanText, deleteGentaurProductFromELASTIC, ELASTIC_QUERY_SINGLE_INSERT, ELASTIC_SCROLL_QUERY_FILTERS, GENERAL_ELSTIC_FILTERS_QUERY, generateSimplesGentaur, generateVariantsGentaur, getBulkDownloadProductMailOptions, getCreateProductMailOptions, getDeleteProductMailOptions, getEditProductMailOptions, getFiltersWithLogic, getTransporter, PROCESS_VARIATIONS_SINGLE_PRODUCT, searchClient, uploadFile, upsertGentaurProductToELASTIC } from "../gentaur_helpers";
 import { IBrandCount } from "../interfaces";
-import AffigenFilter from "../models/Affigen_Filter";
-import AffigenProduct, { IAffigenProduct } from "../models/Affigen_Product";
+import GentaurFilter from "../models/Gentaur_Filter";
+import GentaurProduct, { IGentaurProduct } from "../models/Gentaur_Product";
 import User, { IUser } from "../models/User";
 import moment from "moment";
 import { exec } from "child_process";
+import { getGentaurProductsCount } from "../utils";
+import Supplier from "../models/Supplier";
 
 
 export const getCountsForAllBrands = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const brandsWithCounts: IBrandCount[] | [] = await AffigenProduct.aggregate([
+        const brandsWithCounts: IBrandCount[] | [] = await GentaurProduct.aggregate([
             {
                 $group: {
                     _id: { $toLower: "$brand_name" },
@@ -69,7 +71,7 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
     }
 
     try {
-        const clusters = await AffigenProduct.find({}).distinct("cluster_name");
+        const clusters = await GentaurProduct.find({}).distinct("cluster_name");
         const { product_name } = fieldsANDvalues;
 
         const cleanedProductName = cleanText(product_name);
@@ -81,8 +83,8 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
 
         const cluster_name = bestMatch.bestMatch.target;
 
-        const savedProduct: IAffigenProduct = await AffigenProduct.findOneAndUpdate(
-            { cat_affigen: fieldsANDvalues.cat_affigen }, // Use `cat_affigen` as the unique identifier
+        const savedProduct: IGentaurProduct = await GentaurProduct.findOneAndUpdate(
+            { catalog_number: fieldsANDvalues.catalog_number }, // Use `catalog_number` as the unique identifier
             { $set: { ...fieldsANDvalues, cluster_name, sync: true } }, // Data to update or insert
             { upsert: true, new: true, setDefaultsOnInsert: true } // Upsert options
         );
@@ -95,14 +97,14 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
 
         //   @ts-ignore
         const { _id, ...others } = savedProduct._doc
-        const Inserted_To_Elastic = await upsertAffigenProductToELASTIC('affigen_products', others)
+        const Inserted_To_Elastic = await upsertGentaurProductToELASTIC('gentaur_products', others)
         if (Inserted_To_Elastic) {
 
             const filters = await getFiltersWithLogic()
 
             if (filters.length > 0) {
-                await AffigenProduct.findOneAndUpdate(
-                    { cat_affigen: savedProduct.cat_affigen },
+                await GentaurProduct.findOneAndUpdate(
+                    { catalog_number: savedProduct.catalog_number },
                     {
                         $set: {
                             filters: [],
@@ -123,19 +125,19 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
                             "All",
                             queryData,
                             additionalData,
-                            savedProduct.cat_affigen
+                            savedProduct.catalog_number
                         );
 
                         const searchResponse = await searchClient.search({
-                            index: "affigen_products",
+                            index: "gentaur_products",
                             body: elasticSearchQuery,
                         });
                         //   @ts-ignore
                         const match = searchResponse.hits.total.value;
                         if (match === 1) {
 
-                            await AffigenProduct.findOneAndUpdate(
-                                { cat_affigen: savedProduct.cat_affigen },
+                            await GentaurProduct.findOneAndUpdate(
+                                { catalog_number: savedProduct.catalog_number },
                                 {
                                     $addToSet: {
                                         filters: { filter: filterParent, value: filter_value }, // Ensure 'filters' is the correct array field
@@ -161,7 +163,7 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
         }
 
         res.status(200).json("product inserted successfully");
-        const finalProduct = await AffigenProduct.findOne({ cat_affigen: fieldsANDvalues.cat_affigen })
+        const finalProduct = await GentaurProduct.findOne({ catalog_number: fieldsANDvalues.catalog_number })
             //   @ts-ignore
             const ProductRows = Object.entries(finalProduct._doc)
             .map(([key, value]) => `<tr><td>${key}</td><td>${value}</td></tr>`)
@@ -224,7 +226,7 @@ export const editProduct = async (req: Request, res: Response, next: NextFunctio
 
     try {
 
-        const product = await AffigenProduct.findById(req.params.id).lean();
+        const product = await GentaurProduct.findById(req.params.id).lean();
 
         if (!product) {
             next(createError(404, "product not found"))
@@ -235,7 +237,7 @@ export const editProduct = async (req: Request, res: Response, next: NextFunctio
             ...(images.length > 0 && { $push: { images: { $each: images } } }),
         };
         //   @ts-ignore
-        const updatedProduct = await AffigenProduct.findByIdAndUpdate(req.params.id, update, {
+        const updatedProduct = await GentaurProduct.findByIdAndUpdate(req.params.id, update, {
             new: true,
             runValidators: true,
         });
@@ -250,7 +252,7 @@ export const editProduct = async (req: Request, res: Response, next: NextFunctio
 
 
         if (user) {
-            const newOne = await AffigenProduct.findById(req.params.id).lean();
+            const newOne = await GentaurProduct.findById(req.params.id).lean();
             //   @ts-ignore
             const oldProductRows = Object.entries(product)
                 .map(([key, value]) => `<tr><td>${key}</td><td>${value}</td></tr>`)
@@ -289,15 +291,15 @@ export const deleteProduct = async (req: Request, res: Response, next: NextFunct
 
     try {
 
-        const product = await AffigenProduct.findOne({ cat_affigen: regex }).lean();
+        const product = await GentaurProduct.findOne({ catalog_number: regex }).lean();
 
         if (!product) {
             // If the product is not found in MongoDB, still attempt to delete it from Elasticsearch
             const CAT = String(req.params.id).toUpperCase()
 
-            const existInElastic = await checkIfDocumentExistsInELASTIC('affigen_products', CAT)
+            const existInElastic = await checkIfDocumentExistsInELASTIC('gentaur_products', CAT)
             if (existInElastic) {
-                await deleteAffigenProductFromELASTIC('affigen_products', CAT)
+                await deleteGentaurProductFromELASTIC('gentaur_products', CAT)
 
 
                 next(
@@ -312,12 +314,12 @@ export const deleteProduct = async (req: Request, res: Response, next: NextFunct
 
         }
 
-        await AffigenProduct.findOneAndDelete({ cat_affigen: regex });
+        await GentaurProduct.findOneAndDelete({ catalog_number: regex });
         const CAT = String(req.params.id).toUpperCase()
 
-        const existInElastic = await checkIfDocumentExistsInELASTIC('affigen_products', CAT)
+        const existInElastic = await checkIfDocumentExistsInELASTIC('gentaur_products', CAT)
         if (existInElastic) {
-            await deleteAffigenProductFromELASTIC('affigen_products', CAT)
+            await deleteGentaurProductFromELASTIC('gentaur_products', CAT)
 
         }
 
@@ -404,15 +406,15 @@ export const deleteProduct = async (req: Request, res: Response, next: NextFunct
 
 
 
-export const APPLY_FILTER_AND_CHILDRENS_FOR_ALL_AFFIGEN_PRODUCTS = async (req: Request, res: Response, next: NextFunction) => {
+export const APPLY_FILTER_AND_CHILDRENS_FOR_ALL_GENTAUR_PRODUCTS = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { operator, queryData, additionalData, filter_name, filter_childrens } = req.body;
 
         // Build ElasticSearch query and fetch fields
         const elasticSearchQuery = GENERAL_ELSTIC_FILTERS_QUERY(operator, queryData, additionalData);
-        const catAffigenFields = await ELASTIC_SCROLL_QUERY_FILTERS(elasticSearchQuery);
+        const catGentaurFields = await ELASTIC_SCROLL_QUERY_FILTERS(elasticSearchQuery);
 
-        if (catAffigenFields.length === 0) {
+        if (catGentaurFields.length === 0) {
             res.status(200).json(`Filter Updated!\nAffected Docs: 0`);
         }
 
@@ -423,8 +425,8 @@ export const APPLY_FILTER_AND_CHILDRENS_FOR_ALL_AFFIGEN_PRODUCTS = async (req: R
         }));
 
         // Update the filters in the database
-        const updateResult = await AffigenProduct.updateMany(
-            { cat_affigen: { $in: catAffigenFields } },
+        const updateResult = await GentaurProduct.updateMany(
+            { catalog_number: { $in: catGentaurFields } },
             [
                 {
                     $set: {
@@ -463,7 +465,7 @@ export const APPLY_FILTER_AND_CHILDRENS_FOR_ALL_AFFIGEN_PRODUCTS = async (req: R
         );
 
         if (updateResult.modifiedCount > 0) {
-            const filter = await AffigenFilter.findOne({ filter: filter_name });
+            const filter = await GentaurFilter.findOne({ filter: filter_name });
 
             if (filter) {
                 // Update the target filter's logic for each child value
@@ -475,7 +477,7 @@ export const APPLY_FILTER_AND_CHILDRENS_FOR_ALL_AFFIGEN_PRODUCTS = async (req: R
                 });
 
                 // Save updated counts back to the filter document
-                await AffigenFilter.updateOne(
+                await GentaurFilter.updateOne(
                     { filter: filter_name },
                     { $set: { counts: updatedCounts } }
                 );
@@ -484,7 +486,7 @@ export const APPLY_FILTER_AND_CHILDRENS_FOR_ALL_AFFIGEN_PRODUCTS = async (req: R
             }
         }
 
-        res.status(200).json(`Filter Updated!\nAffected Docs: ${catAffigenFields.length}`);
+        res.status(200).json(`Filter Updated!\nAffected Docs: ${catGentaurFields.length}`);
     } catch (error) {
         next(error);
     }
@@ -500,10 +502,10 @@ export const getProductsByIds = async (req: Request, res: Response, next: NextFu
     const IDS = req.body.ids
 
     try {
-        const result = await AffigenProduct.find({
-            cat_affigen: { $in: IDS },
+        const result = await GentaurProduct.find({
+            catalog_number: { $in: IDS },
         }).select(
-            "-_id cat_affigen product_name size buy_price sell_price variations supplier internal_note"
+            "-_id catalog_number product_name size buy_price sell_price variations supplier internal_note"
         );
 
 
@@ -531,26 +533,25 @@ export const getProductsByIds = async (req: Request, res: Response, next: NextFu
 
   export const getProduct = async (req: Request, res: Response, next: NextFunction) => {
     let finalProduct;
-    const regex = new RegExp(`^${req.params.cat_affigen}$`, "i")
     try {
-      const product: IAffigenProduct | null = await AffigenProduct.findOne({ cat_affigen: regex }).select('-_id  product_name brand_name size sell_price variations cluster_name cat_affigen supplier meta_title meta_description meta_keywords ');
+      const product: IGentaurProduct | null = await GentaurProduct.findOne({ id: req.params.id })
 
-      if (product && product.variations && product.variations.length > 1) {
-        // console.log(product.variations)
-        // const variations = JSON.parse(product.variations.replace(/'/g, '"'))
-        const variations = PROCESS_VARIATIONS_SINGLE_PRODUCT(product.variations)
-        // @ts-ignore
-        const {sell_price, size, ...others} = product._doc
+    //   if (product && product.variations && product.variations.length > 1) {
+    //     // console.log(product.variations)
+    //     // const variations = JSON.parse(product.variations.replace(/'/g, '"'))
+    //     const variations = PROCESS_VARIATIONS_SINGLE_PRODUCT(product.variations)
+    //     // @ts-ignore
+    //     const {sell_price, size, ...others} = product._doc
 
-        finalProduct = {...others, variations, variant: true}
-      } else {
-        // @ts-ignore
-        const {variations, ...others} = product._doc
-        finalProduct = {...others, variant: false}
-      }
+    //     finalProduct = {...others, variations, variant: true}
+    //   } else {
+    //     // @ts-ignore
+    //     const {variations, ...others} = product._doc
+    //     finalProduct = {...others, variant: false}
+    //   }
 
 
-      res.status(200).json(finalProduct);
+      res.status(200).json(product);
     } catch (err) {
       next(err);
     }
@@ -559,81 +560,172 @@ export const getProductsByIds = async (req: Request, res: Response, next: NextFu
 
 
 
+//   export const getAllProducts = async (req: Request, res: Response, next: NextFunction) => {
+//     let page: number;
+//     const pageQuery = req.query.page;
+
+//     if (typeof pageQuery === "string" && parseInt(pageQuery, 10) >= 1) {
+//       page = parseInt(pageQuery, 10);
+//     } else {
+//       page = 1;
+//     }
+
+//     if (page < 1) {
+//       return next(createError(400, "Invalid page number, should start with 1"));
+//     }
+//     const lastId = req.query.lastId ? parseInt(req.query.lastId as string, 10) : null;
+
+//     // if (typeof pageQuery === "string" && parseInt(pageQuery, 10) >= 1) {
+//     //   page = parseInt(pageQuery, 10);
+//     // } else {
+//     //   page = 1;
+//     // }
+
+//     // if (page < 1) {
+//     //   return next(createError(400, "Invalid page number, should start with 1"));
+//     // }
+
+//     // const skip: number = (page - 1) * 100;
+//     const limit: number = 100;
+
+//     try {
+//     //   const totalProducts = await GentaurProduct.countDocuments();
+//       const totalProducts = (await getGentaurProductsCount()).count;
+//       if (totalProducts && totalProducts === 0) {
+//         next(createError(404, 'error fetching counts'))
+//       }
+//       const totalPages = Math.ceil(totalProducts / limit);
+
+//       let query = {};
+//     if (lastId) {
+//       query = { id: { $gt: lastId } };
+//     }
+//       // Fetch products greater than the last `id` seen, sorted by `id`
+//       const products = await GentaurProduct.find(query)
+//         .sort({ id: 1 })
+//         .select(
+//           "-_id id name shipment catalog_number price size variations supplier cluster_name url"
+//         )
+//         .limit(limit);
+
+//         const populatedProducts = await Promise.all(
+//             products.map(async (product) => {
+//                 // Convert Mongoose document to plain object
+//                 let finalProduct = product.toObject();
+
+//                 if (finalProduct.supplier && finalProduct.supplier.id) {
+//                     const supplier = await Supplier.findOne({ id: finalProduct.supplier.id });
+//                     if (supplier) {
+//                         // Convert the supplier to a plain object and update finalProduct
+//                         finalProduct.supplier = supplier.toObject();
+//                     }
+//                 }
+//                 return finalProduct;
+//             })
+//         );
+
+
+
+
+//       // Determine the new last seen id for the next page
+//       const newLastSeenId = populatedProducts.length > 0 ? populatedProducts[products.length - 1].id : null;
+
+//       // Processing product variations directly from the query results
+//       const generatedNoVariations = generateSimplesGentaur(populatedProducts.filter(product => !product.variations));
+//     //   const generatedVariations = generateVariantsGentaur(populatedProducts.filter(product => product.variations));
+
+//       // Combining the results for final output
+//       const PRODUCTS = [...generatedNoVariations];
+
+
+//       const data = {
+//         count: totalProducts,
+//         pages: totalPages,
+//         page: page,
+//         lastId: newLastSeenId,
+//         products: PRODUCTS,
+//       };
+
+//       res.status(200).json(data);
+//     } catch (err) {
+//       next(err);
+//     }
+//   };
   export const getAllProducts = async (req: Request, res: Response, next: NextFunction) => {
     let page: number;
     const pageQuery = req.query.page;
 
+    // Validate and set the page number
     if (typeof pageQuery === "string" && parseInt(pageQuery, 10) >= 1) {
-      page = parseInt(pageQuery, 10);
+        page = parseInt(pageQuery, 10);
     } else {
-      page = 1;
+        page = 1;
     }
 
     if (page < 1) {
-      return next(createError(400, "Invalid page number, should start with 1"));
+        return next(createError(400, "Invalid page number, should start with 1"));
     }
 
-    const skip: number = (page - 1) * 100;
     const limit: number = 100;
 
     try {
-      const totalProducts = await AffigenProduct.countDocuments();
-      const totalPages = Math.ceil(totalProducts / limit);
+        const totalProducts = (await getGentaurProductsCount()).count;
+        if (!totalProducts || totalProducts === 0) {
+            return next(createError(404, 'No products found'));
+        }
+        const totalPages = Math.ceil(totalProducts / limit);
 
-      const products = await AffigenProduct.find({variations: {$ne: null}})
-        .select(
-          "-_id product_name cat_affigen brand_name sell_price size variations cluster_name url"
-        )
-        .skip(skip)
-        .limit(limit);
+        // Calculate the range for the current page
+        const skip = (page - 1) * limit;
 
-      // Corrected filters
-      const variations = products.filter(
-        (product) => product.variations !== null && product.variations !== undefined
-      );
-      const noVariations = products.filter(
-        (product) => product.variations === null || product.variations === undefined
-      );
+        // Fetch products starting from the calculated skip, sorted by `id`
+        const products = await GentaurProduct.find()
+            .sort({ id: 1 }) // Ensure sorting by `id`
+            .skip(skip) // Efficiently skip to the required page
+            .limit(limit)
+            .select(
+                "-_id id name shipment catalog_number price size variations supplier cluster_name url"
+            );
 
-      let generatedNoVariations = [];
-      let generatedVariations = [];
+        // Manually populate supplier data
+        const populatedProducts = await Promise.all(
+            products.map(async (product) => {
+                // Convert Mongoose document to plain object
+                let finalProduct = product.toObject();
 
-      if (noVariations.length > 0) {
-        generatedNoVariations = generateSimplesAffigen(noVariations);
-      }
-      if (variations.length > 0) {
-        generatedVariations = generateVariantsAffigen(variations);
-      }
+                if (finalProduct.supplier && finalProduct.supplier.id) {
+                    const supplier = await Supplier.findOne({ id: finalProduct.supplier.id });
+                    if (supplier) {
+                        // Convert the supplier to a plain object and update finalProduct
+                        finalProduct.supplier = supplier.toObject();
+                    }
+                }
+                return finalProduct;
+            })
+        );
 
-      const PRODUCTS = [...generatedNoVariations, ...generatedVariations];
+
+
+      // Determine the new last seen id for the next page
+    //   const newLastSeenId = populatedProducts.length > 0 ? populatedProducts[products.length - 1].id : null;
+
+      // Processing product variations directly from the query results
+      const generatedNoVariations = generateSimplesGentaur(populatedProducts.filter(product => !product.variations));
+    //   const generatedVariations = generateVariantsGentaur(populatedProducts.filter(product => product.variations));
+
+      // Combining the results for final output
+      const PRODUCTS = [...generatedNoVariations];
+
 
       const data = {
         count: totalProducts,
         pages: totalPages,
         page: page,
+        // lastId: newLastSeenId,
         products: PRODUCTS,
       };
 
       res.status(200).json(data);
-    } catch (err) {
-      next(err);
-    }
-  };
-
-
-
-  export const getClusters = async (req: Request, res: Response, next: NextFunction) => {
-    let clusters
-    try {
-
-      let response = await AffigenProduct.find().distinct('cluster_name')
-      clusters = response.filter((item) => item.length > 0)
-
-
-
-
-
-      res.status(200).json(clusters);
     } catch (err) {
       next(err);
     }
