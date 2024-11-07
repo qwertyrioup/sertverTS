@@ -626,7 +626,7 @@ export const getProductsByIds = async (req: Request, res: Response, next: NextFu
     let clusters
     try {
 
-      let response = await AffigenProduct.find().distinct('cluster_name')
+      let response = await AffigenProduct.distinct('cluster_name')
       clusters = response.filter((item) => item.length > 0)
 
 

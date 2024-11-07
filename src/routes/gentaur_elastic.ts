@@ -1,6 +1,7 @@
 import express, { Router } from "express";
 import { verifyPermissions, verifyToken } from "../controllers/jwt";
-import { SEARCH_WITH_CUSTOM_FILTERS, SEARCH_WITH_FILTERS } from "../controllers/gentaur_elastic";
+import { SEARCH_WITH_CUSTOM_FILTERS, SEARCH_WITH_FILTERS, SEARCH_WITH_FILTERS_FIXED_CLUSTER, SIMILARS } from "../controllers/gentaur_elastic";
+
 
 const router: Router = express.Router()
 
@@ -30,7 +31,11 @@ router.post("/with-custom-filters", verifyToken, verifyPermissions(permissions.s
 ////////////////////////////////////////////////////////////
 ///////////////////////    FRONTS        //////////////////
 //////////////////////////////////////////////////////////
-router.post("/search-with-filters", SEARCH_WITH_FILTERS);
+router.post("/search-with-filters", SEARCH_WITH_FILTERS)
+router.get("/similars", SIMILARS)
+// router.post("/brand/:id/search-with-filters", SEARCH_WITH_FILTERS_FIXED_BRAND)
+// router.get("/similars/:id", SIMILARS_BY_BRAND)
+router.post("/cluster/:id/search-with-filters", SEARCH_WITH_FILTERS_FIXED_CLUSTER)
 
 
 

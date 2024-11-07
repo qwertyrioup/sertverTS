@@ -76,6 +76,8 @@ app.use('/affigen/mails', mailRoutes)
 app.use('/gentaur/products', gentaurProductsRoutes)
 app.use('/gentaur/search', gentaurElasticRoutes)
 app.use('/gentaur/suppliers', gentaurSuppliersRoutes)
+app.use('/gentaur/orders', orderRoutes)
+app.use('/gentaur/contacts', contactRoutes)
 // app.use('/gentaur/filters', affigenFiltersRoutes)
 
 

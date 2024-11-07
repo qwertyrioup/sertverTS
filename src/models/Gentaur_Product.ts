@@ -109,7 +109,6 @@ export interface IGentaurProduct extends Document {
   id: number;
   name: string;
   type: string;
-  cluster_name: string;
   catalog_number: string;
   supplier_catalog_number: string;
   supplier: Supplier;
@@ -121,6 +120,7 @@ export interface IGentaurProduct extends Document {
   specifications: string | null;
   storage_and_shipping: string | null;
   notes: string | null;
+  cluster_name: string | null;
   featured_image: string[]; // URLs or file paths
   images: string[]; // URLs or file paths
   categories: Category[];
@@ -270,7 +270,6 @@ const GentaurProductSchema: Schema = new Schema<IGentaurProduct>(
     name: { type: String, required: true },
     type: { type: String, required: true },
     catalog_number: { type: String, required: true },
-    cluster_name: { type: String, default: null },
     supplier_catalog_number: { type: String, required: true },
     supplier: { type: SupplierSchema, required: true },
     price: { type: PriceSchema, required: true },
@@ -282,6 +281,7 @@ const GentaurProductSchema: Schema = new Schema<IGentaurProduct>(
     variations: {type: String, default: null},
     storage_and_shipping: { type: String, default: null },
     notes: { type: String, default: null },
+    cluster_name: { type: String, default: null },
     featured_image: { type: [String], default: [] },
     images: { type: [String], default: [] },
     categories: { type: [CategorySchema], required: true },

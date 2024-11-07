@@ -452,16 +452,65 @@ export const generateSimplesGentaur = (products: IGentaurProduct[]): any => {
 
     });
 };
+export const generateSimpleGentaur = (product: IGentaurProduct): any => {
+    // console.log(product)
+    // @ts-ignore
+        let finalPrice
+        const {variations, catalog_number, supplier, price, shipment, ...others} = product
+        const buy = Number(price.buy.amount) || null
+        const dry_ice = Boolean(shipment.dry_ice) || false
+        const shipping_cost = Number(supplier.shipping_cost) || 200
+        const shipping_cost_dry_ice = Number(supplier.shipping_cost_dry_ice) || 400
+        const discount = Number(supplier.discount) || 1
+        const flat_rate = Number(supplier.flat_rate)
+        const bank_fee = Number(supplier.bank_fee) || 0
+        const margin = Number(supplier.margin) || 1.6
+        const invoice_surcharges = Number(supplier.invoice_surcharges) || 0
+        const valid_shipping_cost = shipping_cost === 0 ? 200 : shipping_cost
+        const valid_shipping_cost_dry_ice = shipping_cost_dry_ice === 0 ? 400 : shipping_cost_dry_ice
+        const valid_discount = (discount === 0) || (discount > 1)  ? 1 : discount
+        const valid_margin = (margin === 0) || (margin < 1) ? 1.6 : margin
+        const supplierId = supplier.id
+
+
+        const finalCat = supplierId + (catalog_number.startsWith('-') ? catalog_number : '-' + catalog_number);
+
+        if (!buy) {
+            finalPrice = null
+        } else {
+            if (buy < 100) {
+                if (dry_ice) {
+                    finalPrice = flat_rate + bank_fee + valid_shipping_cost_dry_ice + invoice_surcharges
+                } else {
+                    finalPrice = flat_rate + bank_fee + valid_shipping_cost + invoice_surcharges
+
+                }
+            } else if (buy >= 100) {
+                if (dry_ice) {
+                    finalPrice = (buy*valid_discount*valid_margin) + valid_shipping_cost_dry_ice + bank_fee + invoice_surcharges
+                } else {
+                    finalPrice = (buy*valid_discount*valid_margin) + valid_shipping_cost + bank_fee + invoice_surcharges
+
+                }
+
+            }
+        }
+
+
+
+        if (finalPrice) {
+            finalPrice = Number(finalPrice.toFixed(2))
+        }
+
+
+        return {...others, catalog_number: finalCat, sell_price: finalPrice, dry_ice: product.shipment.dry_ice, variant: false}
+
+
+};
 
 export const generateSimplesGentaurELASTIC = (products: IGentaurProduct[]): any => {
     // @ts-ignore
-    return products.map((_doc) => {
-
-        const {variations, price, supplier, ...others} = _doc
-        const sell_price = price && price.sell && price.sell.amount ? Number(parseFloat(price.sell.amount).toFixed(2)) : 0.00
-        const supplierId = supplier && supplier.id ? Number(supplier.id) : null
-        return {...others, sell_price, supplierId, variant: false}
-    });
+    return products.map((_doc) => generateSimpleGentaur(_doc) );
 };
 export const generateVariantsGentaur = (products: IGentaurProduct[]): any => {
     // @ts-ignore
@@ -927,15 +976,8 @@ export const ELASTIC_WITH_FILTERS_PAGINATION_RESPONSE = async (elasticSearchQuer
 
 
 
-          const fieldsToReturn = [
-            'name',
-            'catalog_number',
-            'price',
-            'supplier',
-            'size',
-            'variations',
-            'cluster_name',
-            'url',
+          const fieldsToReturn = [ 'id', 'name', 'shipment', 'catalog_number', 'price', 'size', 'variations', 'supplier', 'cluster_name', 'url'
+
           ];
 
           const products = result.hits.hits.map((item: any) => {
@@ -1000,6 +1042,62 @@ export const ELASTIC_WITH_FILTERS_PAGINATION_RESPONSE = async (elasticSearchQuer
             page: 1,
             products: products,
             filters: filters
+          };
+    }
+
+
+}
+export const ELASTIC_SIMILARS_RESPONSE = async (elasticSearchQuery :any) => {
+
+
+    let products:any = []
+
+    try {
+
+        const result = await searchClient.search({
+            index: "gentaur_products",
+            body: elasticSearchQuery,
+          });
+
+
+
+
+
+
+
+
+
+          const fieldsToReturn = [ 'id', 'name', 'shipment', 'catalog_number', 'price', 'size', 'variations', 'supplier', 'cluster_name', 'url'
+
+          ];
+
+          products = result.hits.hits.map((item: any) => {
+            const source = item._source;
+            const product: any = {};
+
+            for (const field of fieldsToReturn) {
+              if (source[field] !== undefined && source[field] !== null) {
+                product[field] = source[field];
+              }
+            }
+
+            return product;
+          });
+
+
+
+
+
+          return {
+
+            products: products,
+          };
+
+    } catch (error) {
+        return {
+
+            products: products,
+
           };
     }
 
