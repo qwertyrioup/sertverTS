@@ -140,7 +140,7 @@ export const getAllBlogsByPlateform = async (req: Request, res: Response, next: 
 // Get AffigenBlog by Title
 export const getBlog = async (req: Request, res: Response, next: NextFunction) => {
   const title = req.params.title as string;
-  console.log(title)
+//   console.log(title)
   if (!title) next(createError(400, "title is required"));
 
   try {

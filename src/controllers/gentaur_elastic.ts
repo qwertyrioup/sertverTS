@@ -211,7 +211,7 @@ export const SIMILARS = async (
     );
     // @ts-ignore
     const { products, ...others } = searchResponse;
-    console.log(products)
+    // console.log(products)
     let PRODUCTS;
     if (products) {
       const variations = products.filter(

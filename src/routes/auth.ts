@@ -1,6 +1,7 @@
 // auth.js (route file)
 import express, {Router} from "express";
-import { signin } from "../controllers/auth";
+import { getUser, signin } from "../controllers/auth";
+import { verifyToken } from "../controllers/jwt";
 
 
 
@@ -18,6 +19,7 @@ const router : Router = express.Router();
 
 
 router.post("/signin", signin);
+router.get("/me", verifyToken, getUser);
 
 
 export default router;

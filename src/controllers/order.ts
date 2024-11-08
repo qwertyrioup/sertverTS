@@ -15,7 +15,7 @@ export const createOrder = async (req: Request, res: Response, next: NextFunctio
 
 
         const savedOrder = await newOrder.save();
-        console.log(savedOrder)
+        // console.log(savedOrder)
         res.status(200).json(savedOrder);
 
         const mailOptions = getOrderMailOptions(req.body.user_details, req.body.cart, req.body.comment)
