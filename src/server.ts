@@ -23,6 +23,7 @@ import AffigenProduct from './models/Affigen_Product';
 import GentaurProduct from './models/Gentaur_Product';
 import Count from './models/Count';
 // Load environment variables from .env file
+import gentaurFiltersRoutes from "./routes/gentaur_filter"
 dotenv.config();
 
 // Get the port from environment variables or default to 8800
@@ -78,7 +79,8 @@ app.use('/gentaur/search', gentaurElasticRoutes)
 app.use('/gentaur/suppliers', gentaurSuppliersRoutes)
 app.use('/gentaur/orders', orderRoutes)
 app.use('/gentaur/contacts', contactRoutes)
-// app.use('/gentaur/filters', affigenFiltersRoutes)
+app.use('/gentaur/filters', gentaurFiltersRoutes)
+
 
 
 // error handler
