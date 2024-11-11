@@ -67,8 +67,8 @@ app.get('/', (req: Request, res: Response, next: NextFunction) => {
     res.json('Hello, TypeScript + Node + Express');
 });
 
-app.use('/auth', authRoutes)
-// app.use('/auth' , oldeAuth)
+// app.use('/auth', authRoutes)
+app.use('/auth' , oldeAuth)
 app.use('/roles', roleRoutes)
 app.use('/affigen/blogs', blogRoutes)
 app.use('/affigen/products', affigenProductsRoutes)

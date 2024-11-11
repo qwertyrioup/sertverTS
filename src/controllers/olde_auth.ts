@@ -84,3 +84,25 @@ export const getUser = async (
     next(err);
   }
 };
+
+export const revalidateAuth = async (  req: Request,
+                                       res: Response,
+                                       next: NextFunction) => {
+
+  try {
+    // @ts-ignore
+
+    console.log("userId",req.user)
+    // @ts-ignore
+    let userId = req.user.id;
+
+    const user: IUser | null = await User.findById(userId).populate("role");
+
+    if (!user) return next(createError(404, "User not found!"));
+    const { password, ...userDetails } = user.toObject();
+
+    res.status(200).json(userDetails);
+  } catch (err) {
+    next(err);
+  }
+};

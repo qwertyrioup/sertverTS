@@ -1,6 +1,6 @@
 // auth.js (route file)
 import express, {Router} from "express";
-import { getUser, signin } from "../controllers/olde_auth";
+import {getUser, revalidateAuth, signin} from "../controllers/olde_auth";
 import { verifyToken } from "../controllers/jwt";
 
 
@@ -19,6 +19,7 @@ const router : Router = express.Router();
 
 
 router.post("/signin", signin);
+router.post("/revalidate",verifyToken, revalidateAuth);
 router.get("/me", verifyToken, getUser);
 
 
