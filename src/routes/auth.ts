@@ -1,4 +1,4 @@
-// auth.js (route file)
+  // auth.js (route file)
 import express, {Router} from "express";
 import { getUser, signin } from "../controllers/auth";
 import { verifyToken } from "../controllers/jwt";

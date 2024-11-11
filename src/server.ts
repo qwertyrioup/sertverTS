@@ -19,11 +19,14 @@ import affigenBrandsRoutes from "./routes/brand"
 import affigenElasticRoutes from "./routes/affigen_elastic"
 import gentaurElasticRoutes from "./routes/gentaur_elastic"
 import gentaurSuppliersRoutes from "./routes/supplier"
+import gentaurCategoriesRoutes from "./routes/gentaur_category";
+
 import AffigenProduct from './models/Affigen_Product';
 import GentaurProduct from './models/Gentaur_Product';
 import Count from './models/Count';
 // Load environment variables from .env file
 import gentaurFiltersRoutes from "./routes/gentaur_filter"
+import oldeAuth from "./routes/oldeAuth";
 dotenv.config();
 
 // Get the port from environment variables or default to 8800
@@ -65,6 +68,7 @@ app.get('/', (req: Request, res: Response, next: NextFunction) => {
 });
 
 app.use('/auth', authRoutes)
+// app.use('/auth' , oldeAuth)
 app.use('/roles', roleRoutes)
 app.use('/affigen/blogs', blogRoutes)
 app.use('/affigen/products', affigenProductsRoutes)
@@ -80,6 +84,7 @@ app.use('/gentaur/suppliers', gentaurSuppliersRoutes)
 app.use('/gentaur/orders', orderRoutes)
 app.use('/gentaur/contacts', contactRoutes)
 app.use('/gentaur/filters', gentaurFiltersRoutes)
+app.use('/gentaur/categories', gentaurCategoriesRoutes);
 
 
 
