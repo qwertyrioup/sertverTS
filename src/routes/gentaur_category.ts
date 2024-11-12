@@ -3,11 +3,12 @@ import express, {Router} from "express";
 import { verifyPermissions, verifyToken } from "../controllers/jwt";
 import {
   applyLogicForAllCategories,
-  getAllCategoriesElastic,
+  getAllCategoriesElastic, getSubCategory,
   insertParentCategory,
   updateCategoryChildLogic
 } from "../controllers/gentaur_category";
 import { deleteParentCategory, deleteSubCategory, getAllCategories, getCategory, insertSubCategory, updateParentCategory, updateSubCategoryName } from "../controllers/gentaur_category";
+import { getSubFilter } from "../controllers/gentaur_filter";
 const  router: Router = express.Router()
 
 // // Define roles
@@ -34,6 +35,7 @@ router.put('/update-category-child-and-logic', verifyToken, verifyPermissions(AD
 router.get("/", getAllCategories);
 router.get("/:id", getCategory);
 router.get('/logic/apply',verifyToken, verifyPermissions(ADMIN_SUPERADMIN), applyLogicForAllCategories);
+router.get('/get-sub-filter/:parentId/subfilter/:subFilterId', getSubCategory);
 
 
 
