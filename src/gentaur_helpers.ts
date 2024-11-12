@@ -854,7 +854,7 @@ export function ELASTIC_WITH_CUSTOM_FILTERS_PAGINATION_QUERY(operator: string, q
     const mustNotClauses: any = [];
     const filterClauses: any = [];
 
-    const processValue = (value: any, field = 'product_name') => {
+    const processValue = (value: any, field = 'name') => {
       if (value.includes('&')) {
         const values = value.split('&').map((v: any) => v.trim());
         return {
@@ -1125,14 +1125,8 @@ export const ELASTIC_WITH_CUSTOM_FILTERS_PAGINATION_RESPONSE = async (elasticSea
 
 
 
-          const fieldsToReturn = [
-            'product_name',
-            'catalog_number',
-            'sell_price',
-            'size',
-            'variations',
-            'cluster_name',
-            'url',
+          const fieldsToReturn = [ 'id', 'name', 'shipment', 'catalog_number', 'price', 'size', 'variations', 'supplier', 'cluster_name', 'url'
+
           ];
 
           const products = result.hits.hits.map((item: any) => {

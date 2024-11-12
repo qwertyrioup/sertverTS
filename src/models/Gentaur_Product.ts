@@ -259,8 +259,8 @@ const ReviewSchema: Schema = new Schema(
  */
 const FilterSubSchema: Schema = new Schema(
   {
-    filter: { type: String },
-    value: { type: String },
+    filterId: { type: mongoose.Schema.Types.ObjectId  },
+    subId: { type: mongoose.Schema.Types.ObjectId },
   },
   { _id: false }
 );
@@ -294,13 +294,7 @@ const GentaurProductSchema: Schema = new Schema<IGentaurProduct>(
     available: { type: Boolean, required: true },
     display: { type: Boolean, required: true },
     sync: { type: Boolean, default: false },
-    filters: [
-        {
-          filterId: { type: mongoose.Schema.Types.ObjectId, ref: 'Gentaur_Filter' },
-          subId: { type: mongoose.Schema.Types.ObjectId }, // Reference to counts._id
-        },
-
-      ],
+    filters: {type: [FilterSubSchema]}
     // thumbnail: { type: String },
   },
   {
