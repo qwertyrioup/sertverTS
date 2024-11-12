@@ -30,7 +30,7 @@ router.delete('/delete-parent-category/:id', deleteParentCategory);
 router.put('/update-parent-category/:id', updateParentCategory);
 router.put('/parent/:id/child/:subId/rename', updateSubCategoryName);
 router.delete('/delete-sub-category/:parentId/subCategory/:subCategoryId', deleteSubCategory);
-router.put('/update-category-child-and-logic', verifyToken, verifyPermissions(ADMIN_SUPERADMIN), updateCategoryChildLogic)
+router.put('/update-category-child-and-logic', updateCategoryChildLogic)
 // router.get("/", verifyToken, verifyPermissions(ADMIN_SUPERADMIN), getAll);
 router.get("/", getAllCategories);
 router.get("/:id", getCategory);

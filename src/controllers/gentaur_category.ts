@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import Category, { IGentaurCategory } from "../models/Gentaur_Category";
 import {
-  ELASTIC_BATCH_SCROLL_QUERY_FILTERS,
+  ELASTIC_BATCH_SCROLL_QUERY_FILTERS, ELASTIC_SCROLL_QUERY_FILTERS,
   GENERAL_ELSTIC_FILTERS_QUERY,
   getFiltersWithLogic,
   // ELASTIC_BATCH_SCROLL_QUERY_CATEGORIES,
@@ -250,83 +250,80 @@ export const updateCategoryChildLogic = async (
   next: NextFunction
 ) => {
   try {
-    let response;
-    const { categoryId, categoryName, additionalData, operator, queryData } =
-      req.body.data;
+    let finalMessage = "Filter Updated!\nAffected Docs: 0";
+    const { categoryId, subCategoryId, additionalData, operator, queryData } =
+      req.body;
 
-    const isLogicProvided = operator.length > 0 && queryData.length > 0;
-
-    if (!isLogicProvided) {
-      next(createError(400, "Category logic not provided"));
+    if (!(operator && queryData.length > 0)) {
+      return next(createError(400, "Filter logic not provided"));
     }
 
-    const category = await Category.findById(categoryId);
-    if (!category) {
-      next(createError(404, "Category not found"));
-    }
-    // @ts-ignore
-    const CATEGORY = category.category;
-    // @ts-ignore
-    const categoryValues = category.counts;
-
-    const targetChildIndex = categoryValues.findIndex(
-      (item: { category_value: any; }) => item.category_value === categoryName
+    const filter = await GentaurFilter.findOne(
+      { _id: categoryId, "counts._id": subCategoryId },
+      { _id: 1, filter: 1, "counts.$": 1 }
     );
 
-    if (targetChildIndex === -1) {
-      next(createError(404, "Category child not found"));
+    if (!filter || !filter.counts || filter.counts.length === 0) {
+      return next(createError(404, "Sub-filter not found"));
     }
 
-    categoryValues[targetChildIndex].logic = {
-      queryData,
-      additionalData,
-    };
-
-    await Category.findByIdAndUpdate(
-      categoryId,
-      { $set: { counts: categoryValues } },
-      { new: true }
-    );
-
-    await AffigenProduct.updateMany(
+    // Directly update the specific sub-filter within counts array
+    const updateResult = await GentaurFilter.updateOne(
+      { _id: categoryId, "counts._id": subCategoryId },
       {
-        "categories.category": CATEGORY,
-        "categories.value": categoryName,
+        $set: {
+          "counts.$.logic": {
+            operator,
+            queryData,
+            additionalData,
+          },
+        },
+      }
+    );
+
+    //   @ts-ignore
+    if (updateResult.nModified === 0) {
+      return next(createError(500, "Failed to update filter logic"));
+    }
+
+    // Remove the filter from all matching products
+    // const subFilter = filter.counts[0]; // Existing sub-filter data
+    const result = await GentaurProduct.updateMany(
+      {
+        "filters.filterId": categoryId,
       },
       {
-        $pull: {
-          categories: { category: CATEGORY, value: categoryName },
-        },
+        $pull: { filters: { filterId: categoryId, subId: subCategoryId } },
         $set: { sync: false },
       }
     );
 
-    // const elasticSearchQuery = GENERAL_ELASTIC_CATEGORIES_QUERY(
-    //   operator,
-    //   queryData,
-    //   additionalData
-    // );
-    // const catAffigenFields = await ELASTIC_SCROLL_QUERY_CATEGORIES(
-    //   elasticSearchQuery
-    // );
+    // Build the ElasticSearch query
+    const elasticSearchQuery = GENERAL_ELSTIC_FILTERS_QUERY(
+      operator,
+      queryData,
+      additionalData
+    );
+    const catAffigenFields = await ELASTIC_SCROLL_QUERY_FILTERS(
+      elasticSearchQuery
+    );
 
-    // if (catAffigenFields.length > 0) {
-    //   const updateResult = await AffigenProduct.updateMany(
-    //     {
-    //       cat_affigen: { $in: catAffigenFields },
-    //     },
-    //     {
-    //       $push: { categories: { category: CATEGORY, value: categoryName } },
-    //       $set: { sync: false },
-    //     }
-    //   );
-    //
-    //   response = `Category Updated!\nAffected Docs: ${updateResult.modifiedCount}`;
-    // } else {
-    //   response = `Category Updated!\nAffected Docs: 0`;
-    // }
+    if (catAffigenFields.length > 0) {
+      // Add the filter back to the matching products
+      const updateResult = await GentaurProduct.updateMany(
+        {
+          id: { $in: catAffigenFields },
+        },
+        {
+          $addToSet: { filters: { filterId: categoryId, subId: subCategoryId } },
+          $set: { sync: false },
+        }
+      );
 
-    res.status(200).json(response);
+      finalMessage = `Filter Updated!\nAffected Docs: ${updateResult.modifiedCount}`;
+    }
+
+    res.status(200).json(finalMessage);
   } catch (err) {
     next(err);
   }
