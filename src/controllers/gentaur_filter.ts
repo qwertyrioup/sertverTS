@@ -10,6 +10,7 @@ import {
 import { createError } from "../error";
 import AffigenProduct from "../models/Gentaur_Product";
 import { Transform } from "stream";
+import GentaurProduct from "../models/Gentaur_Product";
 
 export const getAll = async (
   req: Request,
@@ -119,7 +120,6 @@ export const insertSubFilter = async (
 ) => {
   const id = req.params.id;
 
-
   try {
     // Check if the filter object already exists
     const existingFilter = await GentaurFilter.findOne({
@@ -132,7 +132,7 @@ export const insertSubFilter = async (
       const filter = await GentaurFilter.findByIdAndUpdate(
         id,
         {
-          $addToSet: { counts: {...req.body} },
+          $addToSet: { counts: { ...req.body } },
         },
         { new: true }
       );
@@ -190,34 +190,32 @@ export const updateParentFilter = async (
   }
 };
 
-
-
 export const updateSubFilterName = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
-    const { id, subId } = req.params;
-    const { filter_value } = req.body;
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { id, subId } = req.params;
+  const { filter_value } = req.body;
 
+  try {
+    const result = await GentaurFilter.findOneAndUpdate(
+      { _id: id, "counts._id": subId },
+      { $set: { "counts.$.filter_value": filter_value } },
+      { new: true }
+    );
 
-
-    try {
-      const result = await GentaurFilter.findOneAndUpdate(
-        { _id: id, 'counts._id': subId },
-        { $set: { 'counts.$.filter_value': filter_value } },
-        { new: true }
-      );
-
-      if (result) {
-        res.status(200).json({ message: 'Sub-filter updated successfully', data: result });
-      } else {
-        next(createError(404, 'Sub-filter not found'));
-      }
-    } catch (error) {
-      next(error);
+    if (result) {
+      res
+        .status(200)
+        .json({ message: "Sub-filter updated successfully", data: result });
+    } else {
+      next(createError(404, "Sub-filter not found"));
     }
-  };
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const deleteSubFilter = async (
   req: Request,
@@ -245,6 +243,33 @@ export const deleteSubFilter = async (
     next(error);
   }
 };
+export const getSubFilter = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const parentId = req.params.parentId;
+  const subFilterId = req.params.subFilterId;
+
+  try {
+    const filter = await GentaurFilter.findOne(
+      { _id: parentId, "counts._id": subFilterId },
+      { _id: 1, filter: 1, "counts.$": 1 } // Project the parent _id and the specific sub-filter in 'counts' array
+    );
+
+    if (!filter || !filter.counts || filter.counts.length === 0) {
+      next(createError(404, "Sub-filter not found"));
+    } else {
+      res.status(200).json({
+        _id: filter._id, // Return parent _id
+        filter: filter.filter, // Return the filter field
+        subFilter: filter.counts[0], // Return the matched sub-filter
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const updateFilterChildLogic = async (
   req: Request,
@@ -252,58 +277,50 @@ export const updateFilterChildLogic = async (
   next: NextFunction
 ) => {
   try {
-    let response;
-    const { filterId, filterName, additionalData, operator, queryData } =
-      req.body.data;
+    let finalMessage = "Filter Updated!\nAffected Docs: 0";
+    const { filterId, subFilterId, additionalData, operator, queryData } =
+      req.body;
 
-    const isLogicProvided = operator.length > 0 && queryData.length > 0;
-
-    if (!isLogicProvided) {
-      next(createError(400, "Filter logic not provided"));
+    if (!(operator && queryData.length > 0)) {
+      return next(createError(400, "Filter logic not provided"));
     }
 
-    // Fetch the filter by ID
-    const filter = await GentaurFilter.findById(filterId);
-    if (!filter) {
-      next(createError(404, "Filter not found"));
-    }
-    //   @ts-ignore
-    const FILTER = filter.filter;
-    //   @ts-ignore
-    const filterValues = filter.counts;
-
-    // Find the target child index
-    const targetChildIndex = filterValues.findIndex(
-      (item) => item.filter_value === filterName
+    const filter = await GentaurFilter.findOne(
+      { _id: filterId, "counts._id": subFilterId },
+      { _id: 1, filter: 1, "counts.$": 1 }
     );
 
-    if (targetChildIndex === -1) {
-      next(createError(404, "Filter child not found"));
+    if (!filter || !filter.counts || filter.counts.length === 0) {
+      return next(createError(404, "Sub-filter not found"));
     }
 
-    // Update the logic of the target child
-    filterValues[targetChildIndex].logic = {
-      queryData,
-      additionalData,
-    };
-
-    // Update the filter document with the modified counts array
-    await GentaurFilter.findByIdAndUpdate(
-      filterId,
-      { $set: { counts: filterValues } },
-      { new: true }
-    );
-
-    // Remove the filter from all products that match the filter and value
-    await AffigenProduct.updateMany(
+    // Directly update the specific sub-filter within counts array
+    const updateResult = await GentaurFilter.updateOne(
+      { _id: filterId, "counts._id": subFilterId },
       {
-        "filters.filter": FILTER,
-        "filters.value": filterName,
+        $set: {
+          "counts.$.logic": {
+            operator,
+            queryData,
+            additionalData,
+          },
+        },
+      }
+    );
+
+    //   @ts-ignore
+    if (updateResult.nModified === 0) {
+      return next(createError(500, "Failed to update filter logic"));
+    }
+
+    // Remove the filter from all matching products
+    // const subFilter = filter.counts[0]; // Existing sub-filter data
+    const result = await GentaurProduct.updateMany(
+      {
+        "filters.filterId": filterId,
       },
       {
-        $pull: {
-          filters: { filter: FILTER, value: filterName },
-        },
+        $pull: { filters: { filterId: filterId, subId: subFilterId } },
         $set: { sync: false },
       }
     );
@@ -320,22 +337,20 @@ export const updateFilterChildLogic = async (
 
     if (catAffigenFields.length > 0) {
       // Add the filter back to the matching products
-      const updateResult = await AffigenProduct.updateMany(
+      const updateResult = await GentaurProduct.updateMany(
         {
-          cat_affigen: { $in: catAffigenFields },
+          id: { $in: catAffigenFields },
         },
         {
-          $push: { filters: { filter: FILTER, value: filterName } },
+          $addToSet: { filters: { filterId: filterId, subId: subFilterId } },
           $set: { sync: false },
         }
       );
 
-      response = `Filter Updated!\nAffected Docs: ${updateResult.modifiedCount}`;
-    } else {
-      response = `Filter Updated!\nAffected Docs: 0`;
+      finalMessage = `Filter Updated!\nAffected Docs: ${updateResult.modifiedCount}`;
     }
 
-    res.status(200).json(response);
+    res.status(200).json(finalMessage);
   } catch (err) {
     next(err);
   }
@@ -368,97 +383,162 @@ export const getFilter = async (
   }
 };
 
+// export const applyLogicForAll = async (
+//   req: Request,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   const jsonStream = new Transform({
+//     writableObjectMode: true,
+//     transform(chunk, encoding, callback) {
+//       // @ts-ignore
+//       if (this.firstChunkWritten) {
+//         this.push("," + JSON.stringify(chunk));
+//       } else {
+//         this.push(JSON.stringify(chunk));
+//         //   @ts-ignore
+//         this.firstChunkWritten = true;
+//       }
+//       callback();
+//     },
+//     flush(callback) {
+//       // this.push(']');  // Close JSON array
+//       callback();
+//     },
+//   });
+
+//   // jsonStream.push('[');
+//   jsonStream.pipe(res);
+//   try {
+//     const filters = await getFiltersWithLogic();
+
+//     if (filters.length > 0) {
+//       jsonStream.write("Started!");
+
+//       //   TODO
+//       //   await AffigenProduct.updateMany(
+//       //     {},
+//       //     { $set: { filters: [], sync: false } }
+//       //   );
+
+//       for await (const document of filters) {
+//         const filterParent = document.filter;
+//         const parentId = document._id;
+//         for (const count of document.counts) {
+//           const subFilterId = count._id;
+//           const { queryData, additionalData } = count.logic;
+
+//           const elasticSearchQuery = GENERAL_ELSTIC_FILTERS_QUERY(
+//             "All",
+//             queryData,
+//             additionalData
+//           );
+//         //   console.log(elasticSearchQuery);
+
+//           const catAffigenFields = await ELASTIC_BATCH_SCROLL_QUERY_FILTERS(
+//             elasticSearchQuery
+//           );
+
+//           const MESSAGE = `${filterParent} : ${count.filter_value} has ${catAffigenFields.length} products`;
+
+//           if (catAffigenFields.length > 0) {
+//             // Collect all unique filter-value pairs to update in one go
+
+//             await GentaurProduct.updateMany(
+//               {
+//                 id: { $in: catAffigenFields },
+//               },
+//               {
+//                 $addToSet: {
+//                   filters: { filterId: parentId, subId: subFilterId },
+//                 },
+//                 $set: { sync: false },
+//               }
+//             );
+//             console.log(MESSAGE)
+//             jsonStream.write(MESSAGE)
+//           }
+//         }
+//       }
+//     }
+//     // jsonStream.write()
+//     jsonStream.end("Filters Done!");
+//   } catch (error) {
+//     console.log(error);
+//     jsonStream.end();
+//   }
+// };
+
 export const applyLogicForAll = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const jsonStream = new Transform({
-    writableObjectMode: true,
-    transform(chunk, encoding, callback) {
-      // @ts-ignore
-      if (this.firstChunkWritten) {
-        this.push("," + JSON.stringify(chunk));
-      } else {
-        this.push(JSON.stringify(chunk));
-        //   @ts-ignore
-        this.firstChunkWritten = true;
-      }
-      callback();
-    },
-    flush(callback) {
-      // this.push(']');  // Close JSON array
-      callback();
-    },
-  });
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      // Set headers for SSE
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.flushHeaders(); // Flush headers to establish SSE
 
-  // jsonStream.push('[');
-  jsonStream.pipe(res);
-  try {
-    const filters = await getFiltersWithLogic();
-    //   console.log(JSON.stringify(filters[0]))
+      // Function to send SSE messages
+      const sendSSE = (message: string) => {
+        res.write(`data: ${message}\n\n`);
+      };
 
-    if (filters.length > 0) {
-      jsonStream.write("Started!");
+      sendSSE('Started!');
 
-      await AffigenProduct.updateMany(
-        {},
-        { $set: { filters: [], sync: false } }
-      );
+      const filters = await getFiltersWithLogic();
 
-      for await (const document of filters) {
-        const filterParent = document.filter;
-        for (const count of document.counts) {
-          const { queryData, additionalData } = count.logic;
+      if (filters.length > 0) {
+        for (const document of filters) {
+          const filterParent = document.filter;
+          const parentId = document._id;
 
-          const elasticSearchQuery = GENERAL_ELSTIC_FILTERS_QUERY(
-            "All",
-            queryData,
-            additionalData
-          );
+          for (const count of document.counts) {
+            const subFilterId = count._id;
+            const { queryData, additionalData } = count.logic;
 
-          const catAffigenFields = await ELASTIC_BATCH_SCROLL_QUERY_FILTERS(
-            elasticSearchQuery
-          );
+            const elasticSearchQuery = GENERAL_ELSTIC_FILTERS_QUERY(
+              'All',
+              queryData,
+              additionalData
+            );
 
-          // }
-          if (catAffigenFields.length > 0) {
-            // Collect all unique filter-value pairs to update in one go
-            const filtersToAdd = {
-              filter: filterParent,
-              value: count.filter_value,
-            };
+            const catAffigenFields = await ELASTIC_BATCH_SCROLL_QUERY_FILTERS(
+              elasticSearchQuery
+            );
 
-            await AffigenProduct.updateMany(
-              {
-                cat_affigen: { $in: catAffigenFields },
+            const MESSAGE = `${filterParent} : ${count.filter_value} has ${catAffigenFields.length} products`;
 
-                filters: {
-                  $not: {
-                    $elemMatch: {
-                      filter: filterParent,
-                      value: count.filter_value,
-                    },
-                  },
+            if (catAffigenFields.length > 0) {
+              await GentaurProduct.updateMany(
+                {
+                  id: { $in: catAffigenFields },
                 },
-              },
-              {
-                $addToSet: { filters: filtersToAdd },
-                $set: { sync: false },
-              }
-            );
+                {
+                  $addToSet: {
+                    filters: { filterId: parentId, subId: subFilterId },
+                  },
+                  $set: { sync: false },
+                }
+              );
 
-            console.log(
-              `${filterParent} - ${count.filter_value} - ${catAffigenFields.length}`
-            );
+              console.log(MESSAGE);
+              sendSSE(MESSAGE); // Send SSE message
+            }
           }
         }
       }
+
+      sendSSE('Filters Done!');
+      res.end(); // Close SSE connection
+    } catch (error) {
+      console.error(error);
+      const sendSSE = (message: string) => {
+        res.write(`data: ${message}\n\n`);
+      };
+      sendSSE('An error occurred.');
+      res.end();
     }
-    // jsonStream.write()
-    jsonStream.end("Filters Done!");
-  } catch (error) {
-    console.log(error);
-    jsonStream.end();
-  }
-};
+  };

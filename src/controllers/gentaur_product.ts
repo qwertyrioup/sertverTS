@@ -732,13 +732,47 @@ export const getAllProducts = async (
       .limit(limit)
       .select(
         "-_id id name shipment catalog_number price size variations supplier cluster_name url"
-      );
-    console.log("products",products)
+      )
+
+
+
+
+      // Step 2: Process each product to include only the relevant sub-filter based on subId
+    // @ts-ignore
+    // const productsWithPopulatedFilters = products.map(product => {
+    //     // @ts-ignore
+    //     const populatedFilters = product.filters.map(filterEntry => {
+    //         // @ts-ignore
+    //         const filterDoc = filterEntry.filterId;
+    //         if (!filterDoc) return null;
+
+    //         // Find the specific sub-filter in counts that matches subId
+    //         // @ts-ignore
+    //       const subFilter = filterDoc.counts.find(count => count._id.equals(filterEntry.subId));
+    //       if (!subFilter) return null;
+
+    //       // Combine main filter and sub-filter details
+    //       return {
+    //         filter: filterDoc.filter,           // Main filter name (e.g., "Isotype")
+    //         filter_value: subFilter.filter_value, // Specific sub-filter value (e.g., "IgA")
+    //         // logic: subFilter.logic,             // Any additional logic in the sub-filter
+    //       };
+    //     }).filter(filter => filter !== null); // Remove null entries if no match found
+
+    //     // Return the product with fully populated filters
+    //     return {
+    //       ...product.toObject(), // Convert Mongoose document to a plain object
+    //       filters: populatedFilters, // Replace filters with populated filter data
+    //     };
+    //   });
+    //   console.log(productsWithPopulatedFilters[0])
+
     // Manually populate supplier data
     const populatedProducts = await Promise.all(
-      products.map(async (product) => {
+        products.map(async (product) => {
         // Convert Mongoose document to plain object
-        let finalProduct = product.toObject();
+        // @ts-ignore
+        let finalProduct = product.toObject()
 
         if (finalProduct.supplier && finalProduct.supplier.id) {
           const supplier = await Supplier.findOne({
@@ -758,6 +792,7 @@ export const getAllProducts = async (
 
     // Processing product variations directly from the query results
     const generatedNoVariations = generateSimplesGentaur(
+        // @ts-ignore
       populatedProducts.filter((product) => !product.variations)
     );
     //   const generatedVariations = generateVariantsGentaur(populatedProducts.filter(product => product.variations));
