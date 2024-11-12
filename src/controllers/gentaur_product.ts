@@ -30,6 +30,9 @@ import moment from "moment";
 import { exec } from "child_process";
 import { getGentaurProductsCount } from "../utils";
 import Supplier from "../models/Supplier";
+import HighlightedProduct from "../models/Highlighted";
+import GentaurBestsellerProducts from "../models/Gentaur_Bestseller_Products";
+import GentaurHighlightedProducts from "../models/Gentaur_Highlighted_Products";
 
 export const getCountsForAllBrands = async (
   req: Request,
@@ -800,3 +803,37 @@ export const getClusters = async (req: Request, res: Response, next: NextFunctio
       next(err);
     }
   };
+
+export const getBestsellers = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const bestsellers = await GentaurBestsellerProducts.find().populate({
+      path: "product_id",
+      model: "Gentaur_Product",
+      select: "-_id"
+    });
+
+    res.status(200).json(bestsellers);
+  } catch (err) {
+    console.error("Error fetching bestsellers:", err);
+    next(err);
+  }
+};
+
+export const getHighlighted = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const highlighted = await GentaurHighlightedProducts.find().populate({
+      path: "product_id",
+      model: "Gentaur_Product",
+      select: "-_id"  // Exclude _id field of the product (optional)
+    });
+
+    const products = highlighted.map(item => item.product_id); // Extract the product object
+
+    res.status(200).json(products);
+  } catch (err) {
+    console.error('Error fetching highlighted products:', err);
+    next(err);
+  }
+};
+
+

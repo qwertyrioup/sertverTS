@@ -2,7 +2,18 @@
 import express, { Router } from "express";
 
 import { Multer } from "../affigen_helpers";
-import { APPLY_FILTER_AND_CHILDRENS_FOR_ALL_GENTAUR_PRODUCTS, createProduct, deleteProduct, downloadBackup, editProduct, getAllProducts, getClusters, getCountsForAllBrands, getProduct, getProductsByIds } from "../controllers/gentaur_product";
+import {
+    APPLY_FILTER_AND_CHILDRENS_FOR_ALL_GENTAUR_PRODUCTS,
+    createProduct,
+    deleteProduct,
+    downloadBackup,
+    editProduct,
+    getAllProducts, getBestsellers,
+    getClusters,
+    getCountsForAllBrands, getHighlighted,
+    getProduct,
+    getProductsByIds
+} from "../controllers/gentaur_product";
 import { verifyPermissions, verifyToken } from "../controllers/jwt";
 
 
@@ -43,6 +54,8 @@ router.get('/backup-products', verifyToken, verifyPermissions(permissions.backup
 router.get("/:id", getProduct);
 router.get("/", getAllProducts);
 router.get("/get/clusters", getClusters);
+router.get("/get/bestsellers", getBestsellers);
+router.get("/get/Highlighted", getHighlighted);
 ///////////////////////////////////////////////////////
 //////////////////////////////////////////////////////
 /////////////////////////////////////////////////////
