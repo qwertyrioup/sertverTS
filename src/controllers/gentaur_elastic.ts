@@ -1,13 +1,18 @@
 import { NextFunction, Request, Response } from "express";
 import {
-    ELASTIC_SIMILARS_RESPONSE,
+  ELASTIC_SCROLL_QUERY_FILTERS,
+  ELASTIC_SIMILARS_RESPONSE,
   ELASTIC_WITH_CUSTOM_FILTERS_PAGINATION_QUERY,
   ELASTIC_WITH_CUSTOM_FILTERS_PAGINATION_RESPONSE,
   ELASTIC_WITH_FILTERS_PAGINATION_RESPONSE,
+  GENERAL_ELSTIC_FILTERS_QUERY,
   generateSimplesGentaurELASTIC,
   generateVariantsGentaurELASTIC,
 } from "../gentaur_helpers";
 import { createError } from "../error";
+import { json } from "body-parser";
+import GentaurProduct from "../models/Gentaur_Product";
+import GentaurFilter from "../models/Gentaur_Filter";
 
 export const SEARCH_WITH_CUSTOM_FILTERS = async (
   req: Request,
@@ -190,25 +195,20 @@ export const SIMILARS = async (
   res: Response,
   next: NextFunction
 ) => {
-
   const { searchParam } = req.query;
   // @ts-ignore
 
   const requestBody = {
-    "query": {
-      "query_string": {
-        "query": searchParam
-      }
+    query: {
+      query_string: {
+        query: searchParam,
+      },
     },
-    "size": 100
-  }
-
-
+    size: 100,
+  };
 
   try {
-    const searchResponse = await ELASTIC_SIMILARS_RESPONSE(
-      requestBody
-    );
+    const searchResponse = await ELASTIC_SIMILARS_RESPONSE(requestBody);
     // @ts-ignore
     const { products, ...others } = searchResponse;
     // console.log(products)
@@ -370,3 +370,78 @@ export const SEARCH_WITH_FILTERS_FIXED_CLUSTER = async (
     next(error);
   }
 };
+
+export const APPLY_FILTER_AND_CHILDRENS_FOR_ALL_GENTAUR_PRODUCTS = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { operator, queryData, additionalData, filtersArray } = req.body;
+
+      let MESSAGE = "No Docs to Modify";
+
+      // Build ElasticSearch query and fetch fields
+      const elasticSearchQuery = GENERAL_ELSTIC_FILTERS_QUERY(
+        operator,
+        queryData,
+        additionalData
+      );
+
+      const catGentaurFields = await ELASTIC_SCROLL_QUERY_FILTERS(
+        elasticSearchQuery
+      );
+
+
+      if (catGentaurFields.length === 0) {
+        res.status(200).json(MESSAGE);
+        return;
+      }
+
+      const updatedProducts = await GentaurProduct.updateMany(
+        { id: { $in: catGentaurFields } },
+        {
+          $addToSet: { filters: { $each: filtersArray } },
+        }
+      );
+
+      if (updatedProducts.modifiedCount === 0) {
+        res.status(200).json(MESSAGE);
+        return;
+      }
+
+      // Map over filtersArray and create update promises for each filter
+    //   @ts-ignore
+      const updatePromises = filtersArray.map(({ filterId, subId }) =>
+        GentaurFilter.updateOne(
+          { _id: filterId, "counts._id": subId },
+          {
+            $set: {
+              "counts.$.logic": {
+                operator: operator,
+                queryData: queryData,
+                additionalData: additionalData,
+              },
+            },
+          }
+        )
+      );
+
+      const updateResults = await Promise.all(updatePromises);
+
+      // Check if any document was modified in the filter update process
+      const anyUpdates = updateResults.some(
+        ({ modifiedCount }) => modifiedCount > 0
+      );
+
+      if (!anyUpdates) {
+        MESSAGE = "No filters were updated.";
+      } else {
+        MESSAGE = `Filters added for ${catGentaurFields.length} products`;
+      }
+
+      res.status(200).json(MESSAGE);
+    } catch (error) {
+      next(error);
+    }
+  };

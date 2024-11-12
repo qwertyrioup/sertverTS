@@ -383,92 +383,6 @@ export const getFilter = async (
   }
 };
 
-// export const applyLogicForAll = async (
-//   req: Request,
-//   res: Response,
-//   next: NextFunction
-// ) => {
-//   const jsonStream = new Transform({
-//     writableObjectMode: true,
-//     transform(chunk, encoding, callback) {
-//       // @ts-ignore
-//       if (this.firstChunkWritten) {
-//         this.push("," + JSON.stringify(chunk));
-//       } else {
-//         this.push(JSON.stringify(chunk));
-//         //   @ts-ignore
-//         this.firstChunkWritten = true;
-//       }
-//       callback();
-//     },
-//     flush(callback) {
-//       // this.push(']');  // Close JSON array
-//       callback();
-//     },
-//   });
-
-//   // jsonStream.push('[');
-//   jsonStream.pipe(res);
-//   try {
-//     const filters = await getFiltersWithLogic();
-
-//     if (filters.length > 0) {
-//       jsonStream.write("Started!");
-
-//       //   TODO
-//       //   await AffigenProduct.updateMany(
-//       //     {},
-//       //     { $set: { filters: [], sync: false } }
-//       //   );
-
-//       for await (const document of filters) {
-//         const filterParent = document.filter;
-//         const parentId = document._id;
-//         for (const count of document.counts) {
-//           const subFilterId = count._id;
-//           const { queryData, additionalData } = count.logic;
-
-//           const elasticSearchQuery = GENERAL_ELSTIC_FILTERS_QUERY(
-//             "All",
-//             queryData,
-//             additionalData
-//           );
-//         //   console.log(elasticSearchQuery);
-
-//           const catAffigenFields = await ELASTIC_BATCH_SCROLL_QUERY_FILTERS(
-//             elasticSearchQuery
-//           );
-
-//           const MESSAGE = `${filterParent} : ${count.filter_value} has ${catAffigenFields.length} products`;
-
-//           if (catAffigenFields.length > 0) {
-//             // Collect all unique filter-value pairs to update in one go
-
-//             await GentaurProduct.updateMany(
-//               {
-//                 id: { $in: catAffigenFields },
-//               },
-//               {
-//                 $addToSet: {
-//                   filters: { filterId: parentId, subId: subFilterId },
-//                 },
-//                 $set: { sync: false },
-//               }
-//             );
-//             console.log(MESSAGE)
-//             jsonStream.write(MESSAGE)
-//           }
-//         }
-//       }
-//     }
-//     // jsonStream.write()
-//     jsonStream.end("Filters Done!");
-//   } catch (error) {
-//     console.log(error);
-//     jsonStream.end();
-//   }
-// };
-
 export const applyLogicForAll = async (
     req: Request,
     res: Response,
@@ -476,9 +390,9 @@ export const applyLogicForAll = async (
   ) => {
     try {
       // Set headers for SSE
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
       res.flushHeaders(); // Flush headers to establish SSE
 
       // Function to send SSE messages
@@ -486,12 +400,12 @@ export const applyLogicForAll = async (
         res.write(`data: ${message}\n\n`);
       };
 
-      sendSSE('Started!');
+      sendSSE("Started!");
 
       const filters = await getFiltersWithLogic();
 
       if (filters.length > 0) {
-        for (const document of filters) {
+        for await (const document of filters) {
           const filterParent = document.filter;
           const parentId = document._id;
 
@@ -499,46 +413,85 @@ export const applyLogicForAll = async (
             const subFilterId = count._id;
             const { queryData, additionalData } = count.logic;
 
-            const elasticSearchQuery = GENERAL_ELSTIC_FILTERS_QUERY(
-              'All',
-              queryData,
-              additionalData
+            // Pull (remove) the specific filter combination from products that contain it
+            await GentaurProduct.updateMany(
+              { "filters.filterId": parentId, "filters.subId": subFilterId },
+              { $pull: { filters: { filterId: parentId, subId: subFilterId } } }
             );
 
-            const catAffigenFields = await ELASTIC_BATCH_SCROLL_QUERY_FILTERS(
-              elasticSearchQuery
-            );
+            // Log the number of products from which filters were removed
+            // const total = await GentaurProduct.find({ "filters.filterId": parentId, "filters.subId": subFilterId }).count();
+            // console.log(`Total products found for filter removal: ${total}`);
+
+            // Perform Elasticsearch query to get products that match the new filter criteria
+            const elasticSearchQuery = GENERAL_ELSTIC_FILTERS_QUERY("All", queryData, additionalData);
+            const catAffigenFields = await ELASTIC_BATCH_SCROLL_QUERY_FILTERS(elasticSearchQuery);
 
             const MESSAGE = `${filterParent} : ${count.filter_value} has ${catAffigenFields.length} products`;
 
             if (catAffigenFields.length > 0) {
+
+              // Add the new filter combination to relevant products
               await GentaurProduct.updateMany(
+                { id: { $in: catAffigenFields } },
                 {
-                  id: { $in: catAffigenFields },
-                },
-                {
-                  $addToSet: {
-                    filters: { filterId: parentId, subId: subFilterId },
-                  },
+                  $addToSet: { filters: { filterId: parentId, subId: subFilterId } },
                   $set: { sync: false },
                 }
               );
 
-              console.log(MESSAGE);
               sendSSE(MESSAGE); // Send SSE message
             }
           }
         }
       }
 
-      sendSSE('Filters Done!');
+      sendSSE("Filters Done!");
       res.end(); // Close SSE connection
     } catch (error) {
       console.error(error);
       const sendSSE = (message: string) => {
         res.write(`data: ${message}\n\n`);
       };
-      sendSSE('An error occurred.');
+      sendSSE("An error occurred.");
       res.end();
+    }
+  };
+export const removeLogic = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+
+
+
+      const {parent, sub} = req.params
+
+
+
+
+      const updatedFilter = await GentaurFilter.findOneAndUpdate(
+        { _id: parent, 'counts._id': sub }, // Filter criteria
+        { $unset: { 'counts.$.logic': "" } }, // Update action
+        { new: true } // Return the updated document
+      ).exec();
+
+      // Check if the document was found and updated
+      if (!updatedFilter) {
+        res.status(404).json({ message: 'No matching document or counts element found.' });
+      }
+
+      const response = await GentaurProduct.updateMany(
+        { "filters.filterId": parent, "filters.subId": sub },
+        { $pull: { filters: { filterId: parent, subId: sub } } }
+      );
+      // Function to send SSE messages
+
+      res.status(200).json(`Logic removed from ${response.modifiedCount} products`)
+
+    } catch (error) {
+        next(error);
+
     }
   };
