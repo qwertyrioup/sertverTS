@@ -129,6 +129,10 @@ export interface IGentaurProduct extends Document {
   available: boolean;
   variations: string;
   sync: boolean;
+  filters?: Array<{
+    filter: string;
+    value: string;
+  }>;
   display: boolean;
 }
 
@@ -290,7 +294,13 @@ const GentaurProductSchema: Schema = new Schema<IGentaurProduct>(
     available: { type: Boolean, required: true },
     display: { type: Boolean, required: true },
     sync: { type: Boolean, default: false },
+    filters: [
+        {
+          filterId: { type: mongoose.Schema.Types.ObjectId, ref: 'Gentaur_Filter' },
+          subId: { type: mongoose.Schema.Types.ObjectId }, // Reference to counts._id
+        },
 
+      ],
     // thumbnail: { type: String },
   },
   {

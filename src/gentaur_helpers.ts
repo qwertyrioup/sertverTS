@@ -646,7 +646,7 @@ export function GENERAL_ELSTIC_FILTERS_QUERY(operator: string, queryData: any, a
     const mustNotClauses: any = [];
     const filterClauses: any = [];
 
-    const processValue = (value: any, field = 'product_name') => {
+    const processValue = (value: any, field = 'name') => {
         if (value.includes('&')) {
             const values = value.split('&').map((v: any) => v.trim());
             return {
@@ -756,7 +756,7 @@ export const ELASTIC_SCROLL_QUERY_FILTERS = async (elasticSearchQuery: any) => {
     let allDocuments = result.hits.hits.slice();
     catGentaurFields.push(
         // @ts-ignore
-        ...allDocuments.map((doc) => doc._source.catalog_number)
+        ...allDocuments.map((doc) => doc._source.id)
     );
 
     let scrollId = result._scroll_id;
@@ -768,14 +768,14 @@ export const ELASTIC_SCROLL_QUERY_FILTERS = async (elasticSearchQuery: any) => {
         });
 
         if (scrollResults.hits.hits.length === 0) {
-            console.log("No more documents to fetch.");
+            // console.log("No more documents to fetch.");
             break;
         }
 
         allDocuments = allDocuments.concat(scrollResults.hits.hits);
         catGentaurFields.push(
             // @ts-ignore
-            ...scrollResults.hits.hits.map((doc) => doc._source.catalog_number)
+            ...scrollResults.hits.hits.map((doc) => doc._source.id)
         );
 
         scrollId = scrollResults._scroll_id;
@@ -797,14 +797,14 @@ export const ELASTIC_BATCH_SCROLL_QUERY_FILTERS = async (elasticSearchQuery: any
         scroll: "5m"
       });
     //   @ts-ignore
-      catGentaurFields = searchResponse.hits.hits.map(doc => doc._source.catalog_number);
+      catGentaurFields = searchResponse.hits.hits.map(doc => doc._source.id);
       let scrollId = searchResponse._scroll_id;
 
       try {
         while (searchResponse.hits.hits.length) {
           searchResponse = await searchClient.scroll({ scroll_id: scrollId, scroll: "5m" });
         //   @ts-ignore
-          catGentaurFields.push(...searchResponse.hits.hits.map(doc => doc._source.catalog_number));
+          catGentaurFields.push(...searchResponse.hits.hits.map(doc => doc._source.id));
         }
       } finally {
         await searchClient.clearScroll({ scroll_id: scrollId });
