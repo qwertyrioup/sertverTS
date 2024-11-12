@@ -20,8 +20,9 @@ export const getGentaurProductsCount = async () => {
         if (!counts) {
             return {count: 0}
         }
-        const affigen = counts.gentaur
-        return {count: affigen}
+        console.log(counts);
+        const gentaur = counts.gentaur
+        return {count: gentaur}
     } catch (error) {
         return {count: 0}
     }

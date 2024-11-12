@@ -76,22 +76,22 @@ export const searchClient = new Client({
     node: String(process.env.ELASTICSEARCH_HOST),  // Pass the environment variable to the Client
 });
 
-export const checkElasticsearchConnection = async () => {
-    let isConnected = false;
-    while (!isConnected) {
-        try {
-            await searchClient.cluster.health({});
-            console.log("Connected successfully to Elasticsearch");
-            isConnected = true;
-        } catch (error: any) {
-            console.log(
-                "Connection to Elasticsearch failed, retrying...",
-                error.message
-            );
-            await new Promise((resolve) => setTimeout(resolve, 5000));
-        }
-    }
-};
+// export const checkElasticsearchConnection = async () => {
+//     let isConnected = false;
+//     while (!isConnected) {
+//         try {
+//             await searchClient.cluster.health({});
+//             console.log("Connected successfully to Elasticsearch");
+//             isConnected = true;
+//         } catch (error: any) {
+//             console.log(
+//                 "Connection to Elasticsearch failed, retrying...",
+//                 error.message
+//             );
+//             await new Promise((resolve) => setTimeout(resolve, 5000));
+//         }
+//     }
+// };
 
 export const checkPythonConnection = async () => {
     let isConnected = false;

@@ -720,9 +720,9 @@ export const getAllProducts = async (
 
   try {
     const totalProducts = (await getGentaurProductsCount()).count;
-    if (!totalProducts || totalProducts === 0) {
-      return next(createError(404, "No products found"));
-    }
+    // if (!totalProducts || totalProducts === 0) {
+    //   return next(createError(404, "No products found"));
+    // }
     const totalPages = Math.ceil(totalProducts / limit);
 
     // Calculate the range for the current page

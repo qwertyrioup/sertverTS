@@ -3,7 +3,7 @@ import cors from "cors";
 import express, { Request, Response, NextFunction } from 'express';
 import bodyParser from 'body-parser'; // Import body-parser
 import { corsOptions } from './consts';
-import { checkElasticsearchConnection, checkPythonConnection, connectToDB } from './affigen_helpers';
+import { checkPythonConnection, connectToDB } from './affigen_helpers';
 import { CustomError } from './interfaces';
 import cookieParser from 'cookie-parser'; // Import cookie-parser
 import authRoutes from "./routes/auth"
@@ -39,7 +39,7 @@ app.use(bodyParser.urlencoded({ limit: '1024mb', extended: true }))
 app.use(cookieParser())
 
 connectToDB()
-checkElasticsearchConnection()
+// checkElasticsearchConnection()
 // checkPythonConnection()
 
 
