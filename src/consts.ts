@@ -15,9 +15,7 @@
 //   };
 export const corsOptions = {
     origin: [
-      "http://localhost:3000",
-      "http://localhost:3031",
-      "http://localhost:3001",
+      "http://localhost:3000"
     ],
     credentials: true,
     exposedHeaders: ["set-cookie"],

@@ -30,7 +30,7 @@ import oldeAuth from "./routes/oldeAuth";
 dotenv.config();
 
 // Get the port from environment variables or default to 8800
-const port: number = Number(process.env.PORT) || 8800;
+const port: number = 8800;
 
 // Create an Express application
 const app = express();
@@ -67,8 +67,8 @@ app.get('/', (req: Request, res: Response, next: NextFunction) => {
     res.json('Hello, TypeScript + Node + Express');
 });
 
-// app.use('/auth', authRoutes)
-app.use('/auth' , oldeAuth)
+app.use('/auth', authRoutes)
+// app.use('/auth' , oldeAuth)
 app.use('/roles', roleRoutes)
 app.use('/affigen/blogs', blogRoutes)
 app.use('/affigen/products', affigenProductsRoutes)

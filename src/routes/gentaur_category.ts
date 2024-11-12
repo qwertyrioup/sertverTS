@@ -35,7 +35,7 @@ router.put('/update-category-child-and-logic', verifyToken, verifyPermissions(AD
 router.get("/", getAllCategories);
 router.get("/:id", getCategory);
 router.get('/logic/apply',verifyToken, verifyPermissions(ADMIN_SUPERADMIN), applyLogicForAllCategories);
-router.get('/get-sub-filter/:parentId/subfilter/:subFilterId', getSubCategory);
+router.get('/get-sub-category/:parentId/subCategory/:subFilterId', getSubCategory);
 
 
 
