@@ -580,7 +580,7 @@ export const getProductsByIds = async (req: Request, res: Response, next: NextFu
       const totalProducts = await AffigenProduct.countDocuments();
       const totalPages = Math.ceil(totalProducts / limit);
 
-      const products = await AffigenProduct.find({variations: {$ne: null}})
+      const products = await AffigenProduct.find()
         .select(
           "-_id product_name cat_affigen brand_name sell_price size variations cluster_name url"
         )
@@ -606,7 +606,6 @@ export const getProductsByIds = async (req: Request, res: Response, next: NextFu
       }
 
       const PRODUCTS = [...generatedNoVariations, ...generatedVariations];
-
       const data = {
         count: totalProducts,
         pages: totalPages,
