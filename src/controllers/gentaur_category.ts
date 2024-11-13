@@ -2,12 +2,8 @@ import { NextFunction, Request, Response } from "express";
 import Category, { IGentaurCategory } from "../models/Gentaur_Category";
 import {
   ELASTIC_BATCH_SCROLL_QUERY_FILTERS, ELASTIC_SCROLL_QUERY_FILTERS,
-  GENERAL_ELSTIC_FILTERS_QUERY,
+  GENERAL_ELSTIC_FILTERS_QUERY, getCategoriesWithLogic,
   getFiltersWithLogic,
-  // ELASTIC_BATCH_SCROLL_QUERY_CATEGORIES,
-  // ELASTIC_SCROLL_QUERY_CATEGORIES,
-  // GENERAL_ELASTIC_CATEGORIES_QUERY,
-  // getCategoriesWithLogic,
   searchClient
 } from "../gentaur_helpers";
 import { createError } from "../error";
@@ -15,6 +11,7 @@ import AffigenProduct from "../models/Gentaur_Product";
 import { Transform } from "stream";
 import GentaurFilter from "../models/Gentaur_Filter";
 import GentaurProduct from "../models/Gentaur_Product";
+import GentaurCategory from "../models/Gentaur_Category";
 
 export const getAllCategories = async (
   req: Request,
@@ -104,8 +101,7 @@ export const insertParentCategory = async (
   res: Response,
   next: NextFunction
 ) => {
-  const data = req.body.data;
-  console.log(data.data);
+  const data = req.body;
   try {
     const newCategory = new Category(data);
     const savedCategory = await newCategory.save();
@@ -250,25 +246,25 @@ export const updateCategoryChildLogic = async (
   next: NextFunction
 ) => {
   try {
-    let finalMessage = "Filter Updated!\nAffected Docs: 0";
+    let finalMessage = "Category Updated!\nAffected Docs: 0";
     const { categoryId, subCategoryId, additionalData, operator, queryData } =
       req.body;
 
     if (!(operator && queryData.length > 0)) {
-      return next(createError(400, "Filter logic not provided"));
+      return next(createError(400, "Category logic not provided"));
     }
 
-    const filter = await GentaurFilter.findOne(
+    const category = await GentaurCategory.findOne(
       { _id: categoryId, "counts._id": subCategoryId },
-      { _id: 1, filter: 1, "counts.$": 1 }
+      { _id: 1, category: 1, "counts.$": 1 }
     );
 
-    if (!filter || !filter.counts || filter.counts.length === 0) {
-      return next(createError(404, "Sub-filter not found"));
+    if (!category || !category.counts || category.counts.length === 0) {
+      return next(createError(404, "Sub-category not found"));
     }
 
     // Directly update the specific sub-filter within counts array
-    const updateResult = await GentaurFilter.updateOne(
+    const updateResult = await GentaurCategory.updateOne(
       { _id: categoryId, "counts._id": subCategoryId },
       {
         $set: {
@@ -283,17 +279,17 @@ export const updateCategoryChildLogic = async (
 
     //   @ts-ignore
     if (updateResult.nModified === 0) {
-      return next(createError(500, "Failed to update filter logic"));
+      return next(createError(500, "Failed to update Gentaur Category logic"));
     }
 
     // Remove the filter from all matching products
     // const subFilter = filter.counts[0]; // Existing sub-filter data
     const result = await GentaurProduct.updateMany(
       {
-        "filters.filterId": categoryId,
+        "categories.categoryId": categoryId,
       },
       {
-        $pull: { filters: { filterId: categoryId, subId: subCategoryId } },
+        $pull: { categories: { categoryId: categoryId, subId: subCategoryId } },
         $set: { sync: false },
       }
     );
@@ -315,12 +311,12 @@ export const updateCategoryChildLogic = async (
           id: { $in: catAffigenFields },
         },
         {
-          $addToSet: { filters: { filterId: categoryId, subId: subCategoryId } },
+          $addToSet: { categories: { categoryId: categoryId, subId: subCategoryId } },
           $set: { sync: false },
         }
       );
 
-      finalMessage = `Filter Updated!\nAffected Docs: ${updateResult.modifiedCount}`;
+      finalMessage = `Category Updated!\nAffected Docs: ${updateResult.modifiedCount}`;
     }
 
     res.status(200).json(finalMessage);
@@ -338,7 +334,7 @@ export const getCategory = async (
     let category = await Category.findById(req.params.id);
 
     if (!category) {
-      next(createError(404, "category found"));
+      next(createError(404, "Category found"));
     }
 
     if (category && category.counts && category.counts.length > 0) {
@@ -356,21 +352,21 @@ export const getSubCategory = async (
   next: NextFunction
 ) => {
   const parentId = req.params.parentId;
-  const subFilterId = req.params.subFilterId;
+  const subCategoryId = req.params.subCategoryId;
 
   try {
-    const filter = await GentaurFilter.findOne(
-      { _id: parentId, "counts._id": subFilterId },
-      { _id: 1, filter: 1, "counts.$": 1 } // Project the parent _id and the specific sub-filter in 'counts' array
+    const category = await GentaurCategory.findOne(
+      { _id: parentId, "counts._id": subCategoryId },
+      { _id: 1, category: 1, "counts.$": 1 } // Project the parent _id and the specific sub-filter in 'counts' array
     );
 
-    if (!filter || !filter.counts || filter.counts.length === 0) {
+    if (!category || !category.counts || category.counts.length === 0) {
       next(createError(404, "Sub-filter not found"));
     } else {
       res.status(200).json({
-        _id: filter._id, // Return parent _id
-        filter: filter.filter, // Return the filter field
-        subFilter: filter.counts[0], // Return the matched sub-filter
+        _id: category._id, // Return parent _id
+        category: category.category, // Return the filter field
+        subCategory: category.counts[0], // Return the matched sub-filter
       });
     }
   } catch (error) {
@@ -395,19 +391,18 @@ export const applyLogicForAllCategories = async (
       res.write(`data: ${message}\n\n`);
     };
 
-    sendSSE('Started!');
+    sendSSE('Started category processing!');
 
-    const filters = await getFiltersWithLogic();
+    const categories = await getCategoriesWithLogic();
 
-    if (filters.length > 0) {
-      for (const document of filters) {
-        const filterParent = document.filter;
+    if (categories.length > 0) {
+      for (const document of categories) {
+        const categoryParent = document.category;
         const parentId = document._id;
 
         for (const count of document.counts) {
-          const subFilterId = count._id;
+          const subCategoryId = count._id;
           const { queryData, additionalData } = count.logic;
-
           const elasticSearchQuery = GENERAL_ELSTIC_FILTERS_QUERY(
             'All',
             queryData,
@@ -418,8 +413,7 @@ export const applyLogicForAllCategories = async (
             elasticSearchQuery
           );
 
-          const MESSAGE = `${filterParent} : ${count.filter_value} has ${catAffigenFields.length} products`;
-
+          const MESSAGE = `${categoryParent} : ${count.category_value} has ${catAffigenFields.length} products`;
           if (catAffigenFields.length > 0) {
             await GentaurProduct.updateMany(
               {
@@ -427,7 +421,7 @@ export const applyLogicForAllCategories = async (
               },
               {
                 $addToSet: {
-                  filters: { filterId: parentId, subId: subFilterId },
+                  "categories": { "categoryId": parentId, "subId": subCategoryId }
                 },
                 $set: { sync: false },
               }
@@ -440,14 +434,15 @@ export const applyLogicForAllCategories = async (
       }
     }
 
-    sendSSE('Filters Done!');
+    sendSSE('Categories Done!');
     res.end(); // Close SSE connection
   } catch (error) {
     console.error(error);
     const sendSSE = (message: string) => {
       res.write(`data: ${message}\n\n`);
     };
-    sendSSE('An error occurred.');
+    sendSSE('An error occurred during category processing.');
     res.end();
   }
 };
+

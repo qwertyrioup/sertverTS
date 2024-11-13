@@ -265,6 +265,14 @@ const FilterSubSchema: Schema = new Schema(
   { _id: false }
 );
 
+const categorySubSchema: Schema = new Schema(
+  {
+    categoryId: { type: mongoose.Schema.Types.ObjectId  },
+    subId: { type: mongoose.Schema.Types.ObjectId },
+  },
+  { _id: false }
+);
+
 /**
  * Main Gentaur Product Schema
  */
@@ -288,13 +296,15 @@ const GentaurProductSchema: Schema = new Schema<IGentaurProduct>(
     cluster_name: { type: String, default: null },
     featured_image: { type: [String], default: [] },
     images: { type: [String], default: [] },
-    categories: { type: [CategorySchema], required: true },
+    // categories: { type: [CategorySchema], required: true },
+    categories: {type: [categorySubSchema]},
     date_added: { type: Date, required: true },
     date_updated: { type: Date, required: true },
     available: { type: Boolean, required: true },
     display: { type: Boolean, required: true },
     sync: { type: Boolean, default: false },
-    filters: {type: [FilterSubSchema]}
+    filters: {type: [FilterSubSchema]},
+
     // thumbnail: { type: String },
   },
   {

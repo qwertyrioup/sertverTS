@@ -10,6 +10,7 @@ import nodemailer from "nodemailer";
 import { IUser } from "./models/User";
 import { IGentaurProduct } from "./models/Gentaur_Product";
 import GentaurFilter from "./models/Gentaur_Filter";
+import GentaurCategory from "./models/Gentaur_Category";
 
 
 dotenv.config();
@@ -741,6 +742,38 @@ export function GENERAL_ELSTIC_FILTERS_QUERY(operator: string, queryData: any, a
 
     return query;
 }
+
+export const getCategoriesWithLogic = async () => {
+    try {
+        const categories = await GentaurCategory.aggregate([
+            {
+                $match: {
+                    "counts.logic": { $exists: true, $ne: {} } // Ensure documents have counts with non-empty logic
+                }
+            },
+            {
+                $project: {
+                    category: 1, // Retain the category name
+                    counts: {
+                        $filter: {
+                            input: "$counts",
+                            as: "count",
+                            cond: {
+                                $and: [
+                                    { $ifNull: ["$$count.logic", false] }, // Check if logic exists
+                                    { $ne: ["$$count.logic", {}] } // Ensure logic is not an empty object
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        ]);
+        return categories;
+    } catch (error) {
+        return [];
+    }
+};
 
 export const ELASTIC_SCROLL_QUERY_FILTERS = async (elasticSearchQuery: any) => {
 

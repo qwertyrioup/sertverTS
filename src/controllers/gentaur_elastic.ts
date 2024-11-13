@@ -13,6 +13,7 @@ import { createError } from "../error";
 import { json } from "body-parser";
 import GentaurProduct from "../models/Gentaur_Product";
 import GentaurFilter from "../models/Gentaur_Filter";
+import GentaurCategory from "../models/Gentaur_Category";
 
 export const SEARCH_WITH_CUSTOM_FILTERS = async (
   req: Request,
@@ -445,3 +446,76 @@ export const APPLY_FILTER_AND_CHILDRENS_FOR_ALL_GENTAUR_PRODUCTS = async (
       next(error);
     }
   };
+export const APPLY_CATEGORY_AND_CHILDRENS_FOR_ALL_GENTAUR_PRODUCTS = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { operator, queryData, additionalData, categoriesArray } = req.body;
+
+    let MESSAGE = "No Docs to Modify";
+
+    // Build ElasticSearch query and fetch fields
+    const elasticSearchQuery = GENERAL_ELSTIC_FILTERS_QUERY(
+      operator,
+      queryData,
+      additionalData
+    );
+
+    const catGentaurFields = await ELASTIC_SCROLL_QUERY_FILTERS(
+      elasticSearchQuery
+    );
+
+    if (catGentaurFields.length === 0) {
+      res.status(200).json("no elstic cats");
+      return;
+    }
+    const updatedProducts = await GentaurProduct.updateMany(
+      { id: { $in: catGentaurFields } },
+      {
+        $addToSet: { categories: { $each: categoriesArray } },
+      }
+    );
+
+    if (updatedProducts.modifiedCount === 0) {
+      res.status(200).json(catGentaurFields);
+      return;
+    }
+
+    // Map over categoriesArray and create update promises for each category
+    //   @ts-ignore
+    const updatePromises = categoriesArray.map(({ categoryId, subId }) =>
+      GentaurCategory.updateOne(
+        { _id: categoryId, "counts._id": subId },
+        {
+          $set: {
+            "counts.$.logic": {
+              operator: operator,
+              queryData: queryData,
+              additionalData: additionalData,
+            },
+          },
+        }
+      )
+    );
+
+    const updateResults = await Promise.all(updatePromises);
+
+    // Check if any document was modified in the category update process
+    const anyUpdates = updateResults.some(
+      ({ modifiedCount }) => modifiedCount > 0
+    );
+
+    if (!anyUpdates) {
+      MESSAGE = "No categories were updated.";
+    } else {
+      MESSAGE = `Categories added for ${catGentaurFields.length} products`;
+    }
+
+    res.status(200).json(MESSAGE);
+  } catch (error) {
+    next(error);
+  }
+};
+

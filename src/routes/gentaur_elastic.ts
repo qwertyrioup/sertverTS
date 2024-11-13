@@ -1,11 +1,12 @@
 import express, { Router } from "express";
 import { verifyPermissions, verifyToken } from "../controllers/jwt";
 import {
+  APPLY_CATEGORY_AND_CHILDRENS_FOR_ALL_GENTAUR_PRODUCTS,
   APPLY_FILTER_AND_CHILDRENS_FOR_ALL_GENTAUR_PRODUCTS,
   SEARCH_WITH_CUSTOM_FILTERS,
   SEARCH_WITH_FILTERS,
   SEARCH_WITH_FILTERS_FIXED_CLUSTER,
-  SIMILARS,
+  SIMILARS
 } from "../controllers/gentaur_elastic";
 
 const router: Router = express.Router();
@@ -23,6 +24,9 @@ router.post("/with-custom-filters", SEARCH_WITH_CUSTOM_FILTERS);
 router.post(
   "/add-filter-with-childs-to-products",
   APPLY_FILTER_AND_CHILDRENS_FOR_ALL_GENTAUR_PRODUCTS
+);router.post(
+  "/add-category-with-childs-to-products",
+  APPLY_CATEGORY_AND_CHILDRENS_FOR_ALL_GENTAUR_PRODUCTS
 );
 
 ////////////////////////////////////////////////////////////
