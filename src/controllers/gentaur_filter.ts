@@ -277,7 +277,7 @@ export const updateFilterChildLogic = async (
   next: NextFunction
 ) => {
   try {
-    let finalMessage = "Filter Updated!\nAffected Docs: 0";
+    let finalMessage = "Filter added for 0 Docs";
     const { filterId, subFilterId, additionalData, operator, queryData } =
       req.body;
 
@@ -290,12 +290,14 @@ export const updateFilterChildLogic = async (
       { _id: 1, filter: 1, "counts.$": 1 }
     );
 
+
+
     if (!filter || !filter.counts || filter.counts.length === 0) {
       return next(createError(404, "Sub-filter not found"));
     }
 
     // Directly update the specific sub-filter within counts array
-    const updateResult = await GentaurFilter.updateOne(
+    const updateResult = await GentaurFilter.findOneAndUpdate(
       { _id: filterId, "counts._id": subFilterId },
       {
         $set: {
@@ -305,8 +307,11 @@ export const updateFilterChildLogic = async (
             additionalData,
           },
         },
-      }
+      },
+      {new: true}
     );
+
+    // console.log(JSON.stringify(updateResult?.counts.find(({filter_value}) => filter_value === 'Dog')))
 
     //   @ts-ignore
     if (updateResult.nModified === 0) {
@@ -325,14 +330,16 @@ export const updateFilterChildLogic = async (
       }
     );
 
+
     // Build the ElasticSearch query
     const elasticSearchQuery = GENERAL_ELSTIC_FILTERS_QUERY(
-      operator,
-      queryData,
-      additionalData
+        operator,
+        queryData,
+        additionalData
     );
+    console.log(JSON.stringify(elasticSearchQuery))
     const catAffigenFields = await ELASTIC_SCROLL_QUERY_FILTERS(
-      elasticSearchQuery
+        elasticSearchQuery
     );
 
     if (catAffigenFields.length > 0) {
@@ -347,7 +354,7 @@ export const updateFilterChildLogic = async (
         }
       );
 
-      finalMessage = `Filter Updated!\nAffected Docs: ${updateResult.modifiedCount}`;
+      finalMessage = `Filter added for ${updateResult.modifiedCount} Docs`;
     }
 
     res.status(200).json(finalMessage);
@@ -416,7 +423,7 @@ export const applyLogicForAll = async (
             // Pull (remove) the specific filter combination from products that contain it
             await GentaurProduct.updateMany(
               { "filters.filterId": parentId, "filters.subId": subFilterId },
-              { $pull: { filters: { filterId: parentId, subId: subFilterId } } }
+              { $pull: { filters: { filterId: parentId, subId: subFilterId } }, $set: {sync: false} }
             );
 
             // Log the number of products from which filters were removed
@@ -484,7 +491,7 @@ export const removeLogic = async (
 
       const response = await GentaurProduct.updateMany(
         { "filters.filterId": parent, "filters.subId": sub },
-        { $pull: { filters: { filterId: parent, subId: sub } } }
+        { $pull: { filters: { filterId: parent, subId: sub } }, $set: {sync: false} }
       );
       // Function to send SSE messages
 

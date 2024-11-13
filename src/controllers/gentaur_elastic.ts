@@ -96,10 +96,11 @@ export const SEARCH_WITH_FILTERS = async (
 
   if (searchParam) {
     mustConditions.push({
-      query_string: {
-        query: searchParam,
-      },
-    });
+        query_string: {
+          query: searchParam,
+          fields: ["name", "catalog_number"], // Search specifically in 'name' and 'catalog_number'
+        },
+      });
   }
 
   data.forEach((item: any) => {
@@ -402,6 +403,7 @@ export const APPLY_FILTER_AND_CHILDRENS_FOR_ALL_GENTAUR_PRODUCTS = async (
         { id: { $in: catGentaurFields } },
         {
           $addToSet: { filters: { $each: filtersArray } },
+          $set: {sync: false}
         }
       );
 
