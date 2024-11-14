@@ -72,51 +72,77 @@ export const updateUserPassword = async (req: Request, res: Response, next: Next
     next(err);
   }
 };
+export const updateUserPasswordByAdmin = async (req: Request, res: Response, next: NextFunction) => {
+  let { notify ,Password } = req.body;
+  let id  = req.params.id;
+
+  try {
+    const user = await User.findById(id);
+    if (!user) return next(createError(404, "User not found!"));
+
+    const salt = bcrypt.genSaltSync(10);
+    const hash = bcrypt.hashSync(Password, salt);
+
+    user.password = hash;
+
+    const savedUser = await user.save();
+    const { password, ...others } = savedUser;
+    if (notify){
+      //@TODO: we put the mailing service hear and we send the non encripted password
+    }
+    res.status(200).json({ ...others });
+  } catch (err) {
+    next(err);
+  }
+};
 
 export const updateUser = async (req: Request, res: Response, next: NextFunction) => {
-  let fieldsANDvalues: any = {};
+  let fieldsANDvalues: Record<string, any> = {};
 
-  if (req.body.data) {
+  // Parse JSON data directly from request body
+  console.log('boddy',req.body);
+  if (req.body) {
+    fieldsANDvalues = req.body.payload; // assuming `req.body` already contains the parsed JSON object
+  } else {
+    console.error("Request body is empty or improperly formatted");
+    return next(new Error("Invalid request body"));
+  }
+
+  // Convert `role` to ObjectId if it is a string
+  if (fieldsANDvalues.role && typeof fieldsANDvalues.role === "string") {
     try {
-      fieldsANDvalues = JSON.parse(req.body.data);
+      fieldsANDvalues.role = new mongoose.Types.ObjectId(fieldsANDvalues.role);
     } catch (error) {
-      return next(new Error("Invalid JSON data"));
+      console.error("Invalid role ObjectId format:", error);
+      return next(new Error("Invalid role ID format"));
     }
   }
 
-  if (fieldsANDvalues.role && typeof fieldsANDvalues.role === "string") {
-    fieldsANDvalues.role = new mongoose.Types.ObjectId(fieldsANDvalues.role);
-  }
-
-  // if (req.file) {
-  //   try {
-  //     const publicUrl = await uploadFile(req.file);
-  //     fieldsANDvalues.photoURL = publicUrl;
-  //   } catch (error) {
-  //     return next(error);
-  //   }
-  // }
+  // Ensure password field is not included in updates
+  delete fieldsANDvalues.password;
 
   try {
     const updatedUser = await User.findByIdAndUpdate(
       req.params.id,
       { $set: fieldsANDvalues },
-      { new: true }
+      { new: true, runValidators: true } // Use runValidators to enforce schema validation
     )
       .populate("role")
       .lean();
 
     if (!updatedUser) {
+      console.error("User not found for the given ID:", req.params.id);
       return res.status(404).json({ message: "User not found" });
     }
 
-    const { password, ...others } = updatedUser;
-    res.status(200).json(others);
+    // Remove password from the response for security
+    const { password, ...userWithoutPassword } = updatedUser;
+    res.status(200).json(userWithoutPassword);
   } catch (error) {
+    console.error("Error updating user:", error);
     next(error);
   }
 };
-
 export const createByAdmin = async (req: Request, res: Response, next: NextFunction) => {
   let fieldsANDvalues: any = {};
 

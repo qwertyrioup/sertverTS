@@ -1,6 +1,17 @@
 // auth.ts (route file)
 import express, { Router } from "express";
-import { createByAdmin, deleteUser, findAll, getAdminUserCount, getSimpleUserCount, getUser, getUserCount, signup, updateUserPassword } from "../controllers/users";
+import {
+  createByAdmin,
+  deleteUser,
+  findAll,
+  getAdminUserCount,
+  getSimpleUserCount,
+  getUser,
+  getUserCount,
+  signup,
+  updateUser,
+  updateUserPassword, updateUserPasswordByAdmin
+} from "../controllers/users";
 
 
 const router: Router = express.Router();
@@ -38,10 +49,12 @@ router.get("/count-simple", getSimpleUserCount);
 router.get("/findall", findAll);
 // router.post("/createbyadmin", verifyToken, verifyPermissions(permissions.createAdmin), Multer.single("file"), createByAdmin);
 router.delete("/:id", deleteUser);
-// router.put("/updateunderuser/:id", verifyToken, verifyPermissions(permissions.updateAdmin), Multer.single("file"), updateUser);
+// @ts-ignore
+router.put("/updateunderuser/:id", updateUser);
 router.delete("/deletebyadmin/:id", deleteUser);
 router.get("/getuser/:id", getUser);
 router.put("/update-password/:id", updateUserPassword);
+router.put("/update-password-by-admin/:id", updateUserPasswordByAdmin);
 
 ////////////////////////////////////////////////////////////
 ///////////////////////    FRONTS        //////////////////
