@@ -161,8 +161,8 @@ const SellPriceSchema: Schema = new Schema(
     currency: { type: String, required: true },
     amount: { type: String, required: true },
     valid_until_date: { type: Date, default: null },
-    date_added: { type: Date, required: true },
-    date_updated: { type: Date, required: true },
+    date_added: { type: Date },
+    date_updated: { type: Date },
   },
   { _id: false }
 );
@@ -201,7 +201,7 @@ const SupplierSchema: Schema = new Schema(
     shipping_cost_dry_ice: { type: Number, default: null },
     bank_fee: { type: Number, default: null },
     invoice_surcharges: { type: Number, default: null },
-    margin: { type: Number, required: true },
+    margin: { type: Number },
     flat_rate: { type: Number, default: null },
   },
   { _id: false }
@@ -213,7 +213,7 @@ const SupplierSchema: Schema = new Schema(
 const ShipmentSchema: Schema = new Schema(
   {
     dry_ice: { type: Boolean, required: true },
-    final_shipping_cost: { type: Number, required: true },
+    final_shipping_cost: { type: Number },
   },
   { _id: false }
 );
@@ -236,7 +236,7 @@ const CategorySchema: Schema = new Schema(
   {
     id: { type: Number, default: null },
     name: { type: String, required: true },
-    supplier_category: { type: SupplierCategorySchema, required: true },
+    supplier_category: { type: SupplierCategorySchema },
   },
   { _id: false }
 );
@@ -282,10 +282,10 @@ const GentaurProductSchema: Schema = new Schema<IGentaurProduct>(
     name: { type: String, required: true },
     type: { type: String, required: true },
     catalog_number: { type: String, required: true },
-    supplier_catalog_number: { type: String, required: true },
+    supplier_catalog_number: { type: String },
     supplier: { type: SupplierSchema, required: true },
     price: { type: PriceSchema, required: true },
-    shipment: { type: ShipmentSchema, required: true },
+    shipment: { type: ShipmentSchema},
     size: { type: String, required: true },
     additional_information: { type: String, default: null },
     description: { type: String, default: null },
@@ -298,8 +298,8 @@ const GentaurProductSchema: Schema = new Schema<IGentaurProduct>(
     images: { type: [String], default: [] },
     // categories: { type: [CategorySchema], required: true },
     categories: {type: [categorySubSchema]},
-    date_added: { type: Date, required: true },
-    date_updated: { type: Date, required: true },
+    date_added: { type: Date},
+    date_updated: { type: Date},
     available: { type: Boolean, required: true },
     display: { type: Boolean, required: true },
     sync: { type: Boolean, default: false },

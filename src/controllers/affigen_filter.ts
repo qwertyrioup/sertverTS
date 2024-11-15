@@ -363,7 +363,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
               }
             );
 
-            console.log(`${filterParent} - ${count.filter_value} - ${catAffigenFields.length}`);
+            // console.log(`${filterParent} - ${count.filter_value} - ${catAffigenFields.length}`);
           }
 
 

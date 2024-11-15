@@ -42,7 +42,7 @@ app.use(bodyParser.urlencoded({ limit: '1024mb', extended: true }))
 app.use(cookieParser())
 
 connectToDB()
-checkElasticsearchConnection()
+// checkElasticsearchConnection()
 // checkPythonConnection()
 
 

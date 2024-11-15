@@ -2,7 +2,7 @@
 import express, { Router } from "express";
 
 import { Multer } from "../affigen_helpers";
-import { createProduct, deleteProduct, downloadBackup, editProduct, getAllProducts, getClusters, getCountsForAllBrands, getProduct, getProductsByIds } from "../controllers/gentaur_product";
+import { createProduct, deleteProduct, downloadBackup, editProduct, getAllProducts, getClusters, getCountsForAllBrands, getProduct, getProductForDash, getProductsByIds } from "../controllers/gentaur_product";
 import { verifyPermissions, verifyToken } from "../controllers/jwt";
 
 
@@ -28,6 +28,9 @@ router.put('/edit/:id', verifyToken, verifyPermissions(permissions.update), Mult
 router.delete("/delete/:id", verifyToken, verifyPermissions(permissions.delete), deleteProduct);
 router.post("/bulk-download-products", verifyToken, verifyPermissions(permissions.read), getProductsByIds);
 router.get('/backup-products', verifyToken, verifyPermissions(permissions.backup), downloadBackup);
+router.get('/dash/:id', getProductForDash);
+
+
 ///////////////////////////////////////////////////////
 //////////////////////////////////////////////////////
 /////////////////////////////////////////////////////

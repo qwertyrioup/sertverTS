@@ -337,7 +337,7 @@ export const updateFilterChildLogic = async (
         queryData,
         additionalData
     );
-    console.log(JSON.stringify(elasticSearchQuery))
+    // console.log(JSON.stringify(elasticSearchQuery))
     const catAffigenFields = await ELASTIC_SCROLL_QUERY_FILTERS(
         elasticSearchQuery
     );

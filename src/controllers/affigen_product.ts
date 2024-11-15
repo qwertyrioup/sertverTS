@@ -536,7 +536,7 @@ export const getProductsByIds = async (req: Request, res: Response, next: NextFu
       const product: IAffigenProduct | null = await AffigenProduct.findOne({ cat_affigen: regex }).select('-_id  product_name brand_name size sell_price variations cluster_name cat_affigen supplier meta_title meta_description meta_keywords ');
 
       if (product && product.variations && product.variations.length > 1) {
-        // console.log(product.variations)
+
         // const variations = JSON.parse(product.variations.replace(/'/g, '"'))
         const variations = PROCESS_VARIATIONS_SINGLE_PRODUCT(product.variations)
         // @ts-ignore

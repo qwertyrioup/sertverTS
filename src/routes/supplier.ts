@@ -1,6 +1,5 @@
 import express, { Router } from "express";
-import { verifyPermissions, verifyToken } from "../controllers/jwt";
-import { getAllSuppliers } from "../controllers/supplier";
+import { getAllSuppliers, getSupplierById, updateSupplierById } from "../controllers/supplier";
 
 
 
@@ -15,7 +14,9 @@ const permissions = {
 
 
 
-router.get("/",verifyToken, verifyPermissions(permissions.read) ,getAllSuppliers);
+router.get("/", getAllSuppliers);
+router.get("/:id", getSupplierById);
+router.put("/:id", updateSupplierById);
 
 
 

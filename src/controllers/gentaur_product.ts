@@ -71,6 +71,7 @@ export const createProduct = async (
 ) => {
   // @ts-ignore
   const userId = req.user.id;
+
   const transporter = await getTransporter();
   let fieldsANDvalues: any = {};
 
@@ -98,10 +99,10 @@ export const createProduct = async (
   }
 
   try {
-    const clusters = await GentaurProduct.find({}).distinct("cluster_name");
-    const { product_name } = fieldsANDvalues;
+    const clusters = await GentaurProduct.distinct("cluster_name");
+    const { name } = fieldsANDvalues;
 
-    const cleanedProductName = cleanText(product_name);
+    const cleanedProductName = cleanText(name);
 
 
     const bestMatch = stringSimilarity.findBestMatch(
@@ -111,85 +112,27 @@ export const createProduct = async (
     );
 
     const cluster_name = bestMatch.bestMatch.target;
+    fieldsANDvalues.cluster_name = cluster_name
 
-    const savedProduct: IGentaurProduct = await GentaurProduct.findOneAndUpdate(
-      { catalog_number: fieldsANDvalues.catalog_number }, // Use `catalog_number` as the unique identifier
-      { $set: { ...fieldsANDvalues, cluster_name, sync: true } }, // Data to update or insert
-      { upsert: true, new: true, setDefaultsOnInsert: true } // Upsert options
-    );
 
+    const productToSave: IGentaurProduct = new GentaurProduct({...fieldsANDvalues})
+    const savedProduct = await productToSave.save()
     if (!savedProduct) {
       next(createError(400, "product not saved"));
     }
 
+
+    res.status(200).json('Product Inserted')
+
     //   @ts-ignore
-    const { _id, ...others } = savedProduct._doc;
-    const Inserted_To_Elastic = await upsertGentaurProductToELASTIC(
-      "gentaur_products",
-      others
-    );
-    if (Inserted_To_Elastic) {
-      const filters = await getFiltersWithLogic();
-
-      if (filters.length > 0) {
-        await GentaurProduct.findOneAndUpdate(
-          { catalog_number: savedProduct.catalog_number },
-          {
-            $set: {
-              filters: [],
-              sync: true, // Ensure 'filters' is the correct array field
-            },
-          },
-          { new: true }
-        );
-
-        for await (const document of filters) {
-          const filterParent = document.filter;
-          for await (const count of document.counts) {
-            const { queryData, additionalData } = count.logic;
-            const { filter_value } = count;
-
-            const elasticSearchQuery = ELASTIC_QUERY_SINGLE_INSERT(
-              "All",
-              queryData,
-              additionalData,
-              savedProduct.catalog_number
-            );
-
-            const searchResponse = await searchClient.search({
-              index: "gentaur_products",
-              body: elasticSearchQuery,
-            });
-            //   @ts-ignore
-            const match = searchResponse.hits.total.value;
-            if (match === 1) {
-              await GentaurProduct.findOneAndUpdate(
-                { catalog_number: savedProduct.catalog_number },
-                {
-                  $addToSet: {
-                    filters: { filter: filterParent, value: filter_value }, // Ensure 'filters' is the correct array field
-                  },
-                  $set: { sync: false },
-                },
-                { new: true }
-              );
-            }
-          }
-        }
-      }
-    }
-
-    res.status(200).json("product inserted successfully");
-    const finalProduct = await GentaurProduct.findOne({
-      catalog_number: fieldsANDvalues.catalog_number,
-    });
-    //   @ts-ignore
-    const ProductRows = Object.entries(finalProduct._doc)
+    const ProductRows = Object.entries(savedProduct._doc)
       .map(([key, value]) => `<tr><td>${key}</td><td>${value}</td></tr>`)
       .join("");
 
-    const user: IUser | null = await User.findById(userId);
-    if (user) {
+
+      const user: IUser | null = await User.findById(userId);
+
+    //   @ts-ignore
       const mailOptions = getCreateProductMailOptions(user, ProductRows);
 
       transporter.sendMail(mailOptions, function (error, info) {
@@ -199,7 +142,8 @@ export const createProduct = async (
           console.log("Email Sent");
         }
       });
-    }
+
+
   } catch (error) {
     next(error);
   }
@@ -242,10 +186,9 @@ export const editProduct = async (
 
   // Ensuring that images and others are separated properly
   const { images = [], ...updateFields } = fieldsANDvalues;
-  const regex = new RegExp(`^${req.params.id}$`, "i"); // Case-insensitive regex
 
   try {
-    const product = await GentaurProduct.findById(req.params.id).lean();
+    const product = await GentaurProduct.findOne({id: req.params.id}).lean();
 
     if (!product) {
       next(createError(404, "product not found"));
@@ -256,9 +199,9 @@ export const editProduct = async (
       ...(images.length > 0 && { $push: { images: { $each: images } } }),
     };
     //   @ts-ignore
-    const updatedProduct = await GentaurProduct.findByIdAndUpdate(
-      req.params.id,
-      update,
+    const updatedProduct = await GentaurProduct.findOneAndUpdate(
+      {id: req.params.id},
+      {...update},
       {
         new: true,
         runValidators: true,
@@ -273,7 +216,7 @@ export const editProduct = async (
     const user: IUser | null = await User.findById(userId);
 
     if (user) {
-      const newOne = await GentaurProduct.findById(req.params.id).lean();
+      const newOne = await GentaurProduct.findOne({id: req.params.id}).lean();
       //   @ts-ignore
       const oldProductRows = Object.entries(product)
         .map(([key, value]) => `<tr><td>${key}</td><td>${value}</td></tr>`)
@@ -310,11 +253,11 @@ export const deleteProduct = async (
   // @ts-ignore
   const userId = req.user.id;
   const transporter = await getTransporter();
-  const regex = new RegExp(`^${req.params.id}$`, "i"); // Case-insensitive regex
+  const regex = req.params.id
 
   try {
     const product = await GentaurProduct.findOne({
-      catalog_number: regex,
+      id: regex,
     }).lean();
 
     if (!product) {
@@ -337,7 +280,7 @@ export const deleteProduct = async (
       }
     }
 
-    await GentaurProduct.findOneAndDelete({ catalog_number: regex });
+    await GentaurProduct.findOneAndDelete({ id: regex });
     const CAT = String(req.params.id).toUpperCase();
 
     const existInElastic = await checkIfDocumentExistsInELASTIC(
@@ -431,10 +374,8 @@ export const getProductsByIds = async (
 
   try {
     const result = await GentaurProduct.find({
-      catalog_number: { $in: IDS },
-    }).select(
-      "-_id catalog_number product_name size buy_price sell_price variations supplier internal_note"
-    );
+      id: { $in: IDS },
+    })
 
     res.status(200).json(result);
     const user = await User.findById(userId);
@@ -499,6 +440,41 @@ export const getProduct = async (
     //   }
 
     res.status(200).json(response);
+  } catch (err) {
+    next(err);
+  }
+};
+export const getProductForDash = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const product: IGentaurProduct | null = await GentaurProduct.findOne({
+      id: req.params.id,
+    })
+
+    if (!product) {
+      next(createError(404, "product not found!"));
+    }
+
+    //@ts-ignore
+    let finalProduct = product.toObject();
+
+    if (finalProduct.supplier && finalProduct.supplier.id) {
+      const supplier = await Supplier.findOne({ id: finalProduct.supplier.id });
+      if (!supplier) {
+        next(createError(404, "supplier not found!"));
+      }
+      if (supplier) {
+        // Convert the supplier to a plain object and update finalProduct
+        finalProduct.supplier = supplier.toObject();
+      }
+    }
+
+
+
+    res.status(200).json(finalProduct);
   } catch (err) {
     next(err);
   }

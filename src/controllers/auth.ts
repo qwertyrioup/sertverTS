@@ -63,7 +63,6 @@ export const getUser = async (
 
     // Exclude the password from the response
     const { password, ...userDetails } = user.toObject();
-    console.error(userDetails);
     res.status(200).json(userDetails);
   } catch (err) {
     next(err);

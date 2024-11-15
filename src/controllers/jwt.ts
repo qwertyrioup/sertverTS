@@ -38,7 +38,7 @@ export const verifyToken = (
 
   if (token) {
     const decoded = jwt.verify(token, String(process.env.JWT_SEC))
-    // console.log(decoded)
+
     jwt.verify(token, String(process.env.JWT_SEC), (err, user) => {
       if (err) return next(createError(403, "Token is not valid!"));
       //   @ts-ignore

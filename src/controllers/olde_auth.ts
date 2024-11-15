@@ -90,9 +90,8 @@ export const revalidateAuth = async (  req: Request,
                                        next: NextFunction) => {
 
   try {
-    // @ts-ignore
+ 
 
-    console.log("userId",req.user)
     // @ts-ignore
     let userId = req.user.id;
 

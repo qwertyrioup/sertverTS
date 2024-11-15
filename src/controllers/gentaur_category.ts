@@ -427,7 +427,7 @@ export const applyLogicForAllCategories = async (
               }
             );
 
-            console.log(MESSAGE);
+            // console.log(MESSAGE);
             sendSSE(MESSAGE); // Send SSE message
           }
         }
@@ -445,4 +445,3 @@ export const applyLogicForAllCategories = async (
     res.end();
   }
 };
-
