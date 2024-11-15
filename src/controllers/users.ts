@@ -73,7 +73,7 @@ export const updateUserPassword = async (req: Request, res: Response, next: Next
   }
 };
 export const updateUserPasswordByAdmin = async (req: Request, res: Response, next: NextFunction) => {
-  let { notify ,Password } = req.body;
+  let {  Password, notify } = req.body;
   let id  = req.params.id;
 
   try {
@@ -97,35 +97,49 @@ export const updateUserPasswordByAdmin = async (req: Request, res: Response, nex
 };
 
 export const updateUser = async (req: Request, res: Response, next: NextFunction) => {
-  let fieldsANDvalues: Record<string, any> = {};
-
-  // Parse JSON data directly from request body
-  console.log('boddy',req.body);
-  if (req.body) {
-    fieldsANDvalues = req.body.payload; // assuming `req.body` already contains the parsed JSON object
-  } else {
-    console.error("Request body is empty or improperly formatted");
-    return next(new Error("Invalid request body"));
-  }
-
-  // Convert `role` to ObjectId if it is a string
-  if (fieldsANDvalues.role && typeof fieldsANDvalues.role === "string") {
-    try {
-      fieldsANDvalues.role = new mongoose.Types.ObjectId(fieldsANDvalues.role);
-    } catch (error) {
-      console.error("Invalid role ObjectId format:", error);
-      return next(new Error("Invalid role ID format"));
-    }
-  }
-
-  // Ensure password field is not included in updates
-  delete fieldsANDvalues.password;
-
   try {
+    // Ensure req.body.payload is defined and is an object
+    const fieldsANDvalues: Record<string, any> = req.body || {};
+    console.log(fieldsANDvalues);
+
+    // Validate the payload format
+    if (typeof fieldsANDvalues !== "object") {
+      console.error("Invalid payload format");
+      return next(new Error("Payload must be a valid object"));
+    }
+
+    // Convert `role` to ObjectId if it exists and is a string
+    if (fieldsANDvalues.role) {
+      if (typeof fieldsANDvalues.role === "string") {
+        try {
+          fieldsANDvalues.role = new mongoose.Types.ObjectId(fieldsANDvalues.role);
+        } catch (error) {
+          console.error("Invalid role ObjectId format:", error);
+          return next(new Error("Invalid role ID format"));
+        }
+      } else {
+        // Role is not a string, handle this edge case
+        console.error("Role must be a string");
+        return next(new Error("Role must be a valid string"));
+      }
+    }
+
+    // Ensure password field is not included in updates
+    delete fieldsANDvalues.password;
+
+    // Filter out undefined or null fields
+    const updateObject: Record<string, any> = {};
+    for (const [key, value] of Object.entries(fieldsANDvalues)) {
+      if (value !== undefined && value !== null) {
+        updateObject[key] = value;
+      }
+    }
+
+    // Update the user
     const updatedUser = await User.findByIdAndUpdate(
       req.params.id,
-      { $set: fieldsANDvalues },
-      { new: true, runValidators: true } // Use runValidators to enforce schema validation
+      { $set: updateObject },
+      { new: true, runValidators: true }
     )
       .populate("role")
       .lean();
@@ -143,6 +157,7 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
     next(error);
   }
 };
+
 export const createByAdmin = async (req: Request, res: Response, next: NextFunction) => {
   let fieldsANDvalues: any = {};
 
