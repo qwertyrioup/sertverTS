@@ -1,44 +1,46 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 interface IUserDetails {
-    // Define the structure of user_details if needed
-    // Example:
-    first_name: string;
-    last_name: string;
-    email: string;
-    phone: string;
-    country: string;
-
-    // Add other fields as necessary
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  country: string;
 }
 
 interface IOrder extends Document {
-    user_details: IUserDetails;
-    cart: Record<string, any>; // Adjust based on the structure of cart
-    comment?: string; // Optional field
-    plateform: string;
+  user_details: IUserDetails;
+  cart: Record<string, any>; // Adjust based on the structure of cart
+  comment?: string; // Optional field
+  platform: string;
+  status: "pending" | "in progress" | "shipped" | "delivered" | "canceled" | "refunded";
 }
 
 const OrderSchema: Schema<IOrder> = new mongoose.Schema(
-    {
-        user_details: {
-            type: Object,
-            required: true,
-        },
-        cart: {
-            type: Object,
-            required: true,
-        },
-        comment: {
-            type: String,
-        },
-        plateform: {
-            type: String,
-            required: true
-        },
-
+  {
+    user_details: {
+      type: Object,
+      required: true,
     },
-    { timestamps: true }
+    cart: {
+      type: Object,
+      required: true,
+    },
+    comment: {
+      type: String,
+    },
+    platform: {
+      type: String,
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: ["pending", "in progress", "shipped", "delivered", "canceled", "refunded"],
+      default: "pending", // Default value is 'pending'
+      required: true,
+    },
+  },
+  { timestamps: true }
 );
 
 export default mongoose.model<IOrder>("Order", OrderSchema);
