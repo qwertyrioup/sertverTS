@@ -8,6 +8,7 @@ import { CustomError } from './interfaces';
 import cookieParser from 'cookie-parser'; // Import cookie-parser
 import authRoutes from "./routes/auth"
 import usersRoute from "./routes/users"
+import clientsRoute from "./routes/clients"
 import roleRoutes from "./routes/role"
 import blogRoutes from "./routes/affigen_blog"
 import orderRoutes from "./routes/order"
@@ -70,6 +71,7 @@ app.get('/', (req: Request, res: Response, next: NextFunction) => {
 
 app.use('/auth', authRoutes)
 app.use('/users', usersRoute)
+app.use('/clients', clientsRoute)
 // app.use('/auth' , oldeAuth)
 app.use('/roles', roleRoutes)
 app.use('/orders', orderRoutes)

@@ -3,20 +3,21 @@ import Order from '../models/Order';
 import { getOrderMailOptions, getTransporter } from "../affigen_helpers";
 
 export const createOrder = async (req: Request, res: Response, next: NextFunction) => {
-    const transporter = await getTransporter()
-
+    const transporter = await getTransporter();
 
     try {
         const newOrder = new Order({
             ...req.body
         });
 
-
         const savedOrder = await newOrder.save();
-        // console.log(savedOrder)
-        res.status(200).json(savedOrder);
+        const populatedOrder = await savedOrder.populate('clientId', 'firstname lastname email country phoneNumber')
 
-        const mailOptions = getOrderMailOptions(req.body.user_details, req.body.cart, req.body.comment)
+        res.status(200).json({
+            ...savedOrder.toObject()
+        });
+
+        const mailOptions = getOrderMailOptions(req.body.user_details, req.body.cart, req.body.comment);
         transporter.sendMail(mailOptions, (error: any) => {
             if (error) {
                 console.log(error);
@@ -27,12 +28,14 @@ export const createOrder = async (req: Request, res: Response, next: NextFunctio
     } catch (err) {
         next(err);
     }
-}
+};
 
 export const getAllOrders = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const orders = await Order.find();
-        res.status(200).json(orders);
+        const orders = await Order.find().populate('clientId', 'firstname lastname email country phoneNumber');
+        res.status(200).json(orders.map(order => ({
+            ...order.toObject()
+        })));
     } catch (err) {
         next(err);
     }
@@ -54,26 +57,31 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
           orderId,
           { status: status },
           { new: true } // Return the updated order
-        );
+        ).populate('clientId', 'firstname lastname email country phoneNumber');
 
         if (!updatedOrder) {
             return res.status(404).json({ message: "Order not found." });
         }
 
         // Return the updated order as response
-        res.status(200).json(updatedOrder);
+        res.status(200).json({
+            ...updatedOrder.toObject()
+        });
     } catch (error) {
         console.error("Error updating order status:", error);
         res.status(500).json({ message: "Server error. Please try again later." });
     }
 };
+
 export const getOrderById = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const order = await Order.findById(req.params.id);
+        const order = await Order.findById(req.params.id).populate('clientId', 'firstname lastname email country phoneNumber');
         if (!order) {
             return res.status(404).json({ message: 'Order not found' });
         }
-        res.status(200).json(order);
+        res.status(200).json({
+            ...order.toObject()
+        });
     } catch (err) {
         next(err);
     }
@@ -82,8 +90,10 @@ export const getOrderById = async (req: Request, res: Response, next: NextFuncti
 export const getOrdersByPlatform = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { platform } = req.params;
-        const orders = await Order.find({ plateform: platform });
-        res.status(200).json(orders);
+        const orders = await Order.find({ platform: platform }).populate('clientId', 'firstname lastname email country phoneNumber');
+        res.status(200).json(orders.map(order => ({
+            ...order.toObject()
+        })));
     } catch (err) {
         next(err);
     }
@@ -94,11 +104,13 @@ export const updateOrder = async (req: Request, res: Response, next: NextFunctio
         const updatedOrder = await Order.findByIdAndUpdate(req.params.id, req.body, {
             new: true,
             runValidators: true,
-        });
+        }).populate('clientId', 'firstname lastname email country phoneNumber');
         if (!updatedOrder) {
             return res.status(404).json({ message: 'Order not found' });
         }
-        res.status(200).json(updatedOrder);
+        res.status(200).json({
+            ...updatedOrder.toObject()
+        });
     } catch (err) {
         next(err);
     }
@@ -106,7 +118,7 @@ export const updateOrder = async (req: Request, res: Response, next: NextFunctio
 
 export const deleteOrder = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const deletedOrder = await Order.findByIdAndDelete(req.params.id);
+        const deletedOrder = await Order.findByIdAndDelete(req.params.id).populate('clientId', 'firstname lastname email country phoneNumber');
         if (!deletedOrder) {
             return res.status(404).json({ message: 'Order not found' });
         }
