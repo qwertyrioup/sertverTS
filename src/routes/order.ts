@@ -2,8 +2,8 @@ import express, { Router } from "express";
 import {
   createOrder,
   deleteOrder,
-  getAllOrders,
-  getOrderById,
+  getAllOrders, getBestSellingProductAndPlatformAnalytics,
+  getOrderById, getOrderCountOverTime,
   getOrdersByPlatform,
   updateOrder, updateOrderStatus
 } from "../controllers/order";
@@ -51,6 +51,10 @@ router.delete('/delete-order/:id', deleteOrder);
 ///////////////////////    DASH        //////////////////
 /////////////////////                //////////////////
 router.post("/create", createOrder);
+
+router.get("/count-orders-over-time", getOrderCountOverTime);
+
+router.get("/get-best-selling-product-and-platform-analytics", getBestSellingProductAndPlatformAnalytics)
 
 
 

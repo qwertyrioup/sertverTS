@@ -6,7 +6,7 @@ import {
   deleteClient,
   findAllClients,
   getClient,
-  getClientCount,
+  getClientCount, getClientCountOverTime,
   updateClient, verifyClient, verifyEmail
 } from "../controllers/clients";
 
@@ -55,5 +55,7 @@ router.delete('/verifyClient/:id', verifyClient);
 
 // Get client count
 router.get('/count', getClientCount);
+
+router.get('/client-count-over-time', getClientCountOverTime)
 
 export default router;

@@ -148,3 +148,131 @@ export const deleteOrder = async (req: Request, res: Response, next: NextFunctio
         next(err);
     }
 };
+
+export const getOrderCountOverTime = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+    try {
+        const orderCounts = await Order.aggregate([
+            {
+                $group: {
+                    _id: {
+                        year: { $year: '$createdAt' },
+                        month: { $month: '$createdAt' },
+                        status: '$status',
+                    },
+                    count: { $sum: 1 },
+                    totalSales: { $sum: '$cart.total' },
+                },
+            },
+            {
+                $project: {
+                    year: '$_id.year',
+                    month: '$_id.month',
+                    status: '$_id.status',
+                    count: 1,
+                    totalSales: 1,
+                    _id: 0,
+                },
+            },
+            {
+                $sort: { year: 1, month: 1 },
+            },
+        ]);
+
+        res.status(200).json(orderCounts);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getBestSellingProductAndPlatformAnalytics = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+    try {
+        // Get best-selling product each month
+        const bestSellingProductsByMonth = await Order.aggregate([
+            {
+                $unwind: {
+                    path: '$cart.products',
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
+                $match: {
+                    'cart.products.product_name': { $ne: null },
+                },
+            },
+            {
+                $group: {
+                    _id: {
+                        year: { $year: '$createdAt' },
+                        month: { $month: '$createdAt' },
+                        productName: '$cart.products.product_name',
+                        catAffigen: '$cart.products.cat_affigen',
+                    },
+                    totalQuantity: { $sum: { $toInt: '$cart.products.qty' } },
+                },
+            },
+            {
+                $project: {
+                    year: '$_id.year',
+                    month: '$_id.month',
+                    productName: '$_id.productName',
+                    catAffigen: '$_id.catAffigen',
+                    totalQuantity: 1,
+                    _id: 0,
+                },
+            },
+            {
+                $sort: { year: 1, month: 1, totalQuantity: -1 },
+            },
+            {
+                $group: {
+                    _id: {
+                        year: '$year',
+                        month: '$month',
+                    },
+                    bestProduct: { $first: '$$ROOT' },
+                },
+            },
+            {
+                $replaceRoot: { newRoot: '$bestProduct' },
+            },
+        ]);
+
+        // Get order count per platform
+        const orderCountByPlatform = await Order.aggregate([
+            {
+                $match: {
+                    platform: { $ne: null },
+                },
+            },
+            {
+                $group: {
+                    _id: '$platform',
+                    count: { $sum: 1 },
+                },
+            },
+            {
+                $project: {
+                    platform: '$_id',
+                    count: 1,
+                    _id: 0,
+                },
+            },
+        ]);
+
+        res.status(200).json({ bestSellingProductsByMonth, orderCountByPlatform });
+    } catch (error) {
+        next(error);
+    }
+};
+
+
+
+

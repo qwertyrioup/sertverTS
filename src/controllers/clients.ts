@@ -290,3 +290,43 @@ export const getClientCount = async (req: Request, res: Response, next: NextFunc
     next(error);
   }
 };
+
+export const getClientCountOverTime = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const clientCounts = await Client.aggregate([
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' },
+            emailVerified: '$isEmilVerified',
+            banned: '$isBnned',
+          },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          year: '$_id.year',
+          month: '$_id.month',
+          emailVerified: '$_id.emailVerified',
+          banned: '$_id.banned',
+          count: 1,
+          _id: 0,
+        },
+      },
+      {
+        $sort: { year: 1, month: 1 },
+      },
+    ]);
+
+    res.status(200).json(clientCounts);
+  } catch (error) {
+    next(error);
+  }
+};
+
