@@ -1,34 +1,55 @@
 import { NextFunction, Request, Response } from 'express';
 import Order from '../models/Order';
 import { getOrderMailOptions, getTransporter } from "../affigen_helpers";
+import Client from "../models/Client";
 
-export const createOrder = async (req: Request, res: Response, next: NextFunction) => {
-    const transporter = await getTransporter();
-
+export const createOrder = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
     try {
+        const transporter = await getTransporter();
+
+        // Validate client
+        const client = await Client.findById(req.body.clientId);
+        if (!client || !client.isEmilVerified) {
+            res.status(400).json({ message: 'Client is not verified. Cannot create order.' });
+            return; // Ensure no further code is executed
+        }
+
+        // Create new order
         const newOrder = new Order({
-            ...req.body
+            ...req.body,
         });
 
         const savedOrder = await newOrder.save();
-        const populatedOrder = await savedOrder.populate('clientId', 'firstname lastname email country phoneNumber')
+        await savedOrder.populate('clientId', 'firstname lastname email country phoneNumber');
 
+        // Send response after saving the order
         res.status(200).json({
-            ...savedOrder.toObject()
+            ...savedOrder.toObject(),
         });
 
-        const mailOptions = getOrderMailOptions(req.body.user_details, req.body.cart, req.body.comment);
+        // Send email notification after response
+        const mailOptions = getOrderMailOptions(savedOrder.clientId, req.body.cart, req.body.comment);
         transporter.sendMail(mailOptions, (error: any) => {
             if (error) {
-                console.log(error);
+                console.error('Error sending email:', error);
             } else {
-                console.log("Email Sent");
+                console.log('Email Sent');
             }
         });
     } catch (err) {
-        next(err);
+        if (!res.headersSent) {
+            next(err); // Pass to the error handling middleware if no response has been sent yet
+        } else {
+            console.error('Unhandled error after response:', err);
+        }
     }
 };
+
+
 
 export const getAllOrders = async (req: Request, res: Response, next: NextFunction) => {
     try {
