@@ -11,6 +11,7 @@ import usersRoute from "./routes/users"
 import clientsRoute from "./routes/clients"
 import roleRoutes from "./routes/role"
 import blogRoutes from "./routes/affigen_blog"
+import gentaurBlogRoutes from "./routes/gentaur_blog"
 import orderRoutes from "./routes/order"
 import contactRoutes from "./routes/contact"
 import mailRoutes from "./routes/mail"
@@ -93,6 +94,7 @@ app.use('/gentaur/search', gentaurElasticRoutes)
 app.use('/gentaur/suppliers', gentaurSuppliersRoutes)
 // app.use('/gentaur/orders', orderRoutes)
 app.use('/gentaur/contacts', contactRoutes)
+app.use('/gentaur/blogs', gentaurBlogRoutes)
 app.use('/gentaur/hot-products', gentaur_hot_product)
 app.use('/gentaur/filters', gentaurFiltersRoutes)
 app.use('/gentaur/categories', gentaurCategoriesRoutes);
