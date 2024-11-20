@@ -8,8 +8,10 @@ import { CustomError } from './interfaces';
 import cookieParser from 'cookie-parser'; // Import cookie-parser
 import authRoutes from "./routes/auth"
 import usersRoute from "./routes/users"
+import clientsRoute from "./routes/clients"
 import roleRoutes from "./routes/role"
 import blogRoutes from "./routes/affigen_blog"
+import gentaurBlogRoutes from "./routes/gentaur_blog"
 import orderRoutes from "./routes/order"
 import contactRoutes from "./routes/contact"
 import mailRoutes from "./routes/mail"
@@ -28,6 +30,8 @@ import Count from './models/Count';
 // Load environment variables from .env file
 import gentaurFiltersRoutes from "./routes/gentaur_filter"
 import oldeAuth from "./routes/oldeAuth";
+import gentaur_hot_product from "./routes/gentaur_hot_product";
+import affigen_hot_product from "./routes/affigen_hot_product";
 dotenv.config();
 
 // Get the port from environment variables or default to 8800
@@ -70,11 +74,16 @@ app.get('/', (req: Request, res: Response, next: NextFunction) => {
 
 app.use('/auth', authRoutes)
 app.use('/users', usersRoute)
+// THE ENDPINT FOR CLIENTS SO THAT ORDERS WILL WORK
+app.use('/clients', clientsRoute)
+
+
 // app.use('/auth' , oldeAuth)
 app.use('/roles', roleRoutes)
 app.use('/orders', orderRoutes)
 app.use('/affigen/blogs', blogRoutes)
 app.use('/affigen/products', affigenProductsRoutes)
+app.use('/affigen/hot-products', affigen_hot_product)
 app.use('/affigen/filters', affigenFiltersRoutes)
 app.use('/affigen/search', affigenElasticRoutes)
 app.use('/affigen/brands', affigenBrandsRoutes)
@@ -85,6 +94,8 @@ app.use('/gentaur/search', gentaurElasticRoutes)
 app.use('/gentaur/suppliers', gentaurSuppliersRoutes)
 // app.use('/gentaur/orders', orderRoutes)
 app.use('/gentaur/contacts', contactRoutes)
+app.use('/gentaur/blogs', gentaurBlogRoutes)
+app.use('/gentaur/hot-products', gentaur_hot_product)
 app.use('/gentaur/filters', gentaurFiltersRoutes)
 app.use('/gentaur/categories', gentaurCategoriesRoutes);
 

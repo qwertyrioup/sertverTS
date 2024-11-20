@@ -1,15 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose";
 
-interface IUserDetails {
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  country: string;
-}
-
 interface IOrder extends Document {
-  user_details: IUserDetails;
+  clientId: mongoose.Schema.Types.ObjectId;
   cart: Record<string, any>; // Adjust based on the structure of cart
   comment?: string; // Optional field
   platform: string;
@@ -18,8 +10,9 @@ interface IOrder extends Document {
 
 const OrderSchema: Schema<IOrder> = new mongoose.Schema(
   {
-    user_details: {
-      type: Object,
+    clientId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Client',
       required: true,
     },
     cart: {
