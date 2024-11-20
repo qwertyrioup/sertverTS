@@ -29,6 +29,7 @@ import Count from './models/Count';
 // Load environment variables from .env file
 import gentaurFiltersRoutes from "./routes/gentaur_filter"
 import oldeAuth from "./routes/oldeAuth";
+import gentaur_hot_product from "./routes/gentaur_hot_product";
 dotenv.config();
 
 // Get the port from environment variables or default to 8800
@@ -71,7 +72,9 @@ app.get('/', (req: Request, res: Response, next: NextFunction) => {
 
 app.use('/auth', authRoutes)
 app.use('/users', usersRoute)
+// THE ENDPINT FOR CLIENTS SO THAT ORDERS WILL WORK
 app.use('/clients', clientsRoute)
+app.use('/gentaur/hot-products', gentaur_hot_product)
 // app.use('/auth' , oldeAuth)
 app.use('/roles', roleRoutes)
 app.use('/orders', orderRoutes)
